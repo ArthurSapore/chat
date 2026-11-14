@@ -20,7 +20,6 @@ export function useTypingUsers(socket: ChatSocket, conversationId: string) {
     }
 
     const onTyping = (payload: TypingPayload) => {
-
       if (payload.conversationId !== conversationId) return
 
       setTypingUserIds((prev) =>
@@ -36,7 +35,6 @@ export function useTypingUsers(socket: ChatSocket, conversationId: string) {
     }
 
     const onStopped = (payload: TypingPayload) => {
-
       if (payload.conversationId !== conversationId) {
         return
       }

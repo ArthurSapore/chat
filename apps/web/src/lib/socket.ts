@@ -32,12 +32,11 @@ type AckEvents = {
     : never
 }[keyof ClientToServerEvents]
 
-type AckData<E extends AckEvents> =
-  Parameters<ClientToServerEvents[E]>[1] extends (
-    response: Ack<infer T>
-  ) => void
-    ? T
-    : never
+type AckData<E extends AckEvents> = Parameters<
+  ClientToServerEvents[E]
+>[1] extends (response: Ack<infer T>) => void
+  ? T
+  : never
 
 /**
  * Emite um evento com ack e devolve uma Promise: resolve com `data` ou

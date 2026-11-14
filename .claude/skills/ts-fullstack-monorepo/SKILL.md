@@ -1,6 +1,6 @@
 ---
 name: ts-fullstack-monorepo
-description: Ferramentas, estrutura e convenções de um monorepo TypeScript full-stack com pnpm + Turborepo, API Node (Express 5 em camadas controller/service/repository com injeção de dependência, PostgreSQL, Zod, Socket.IO, config via .env), front React 19 + Vite (TanStack Router, TanStack Query, Zustand, React Hook Form + Zod, Tailwind v4, shadcn/Base UI), pacote de contratos compartilhados e Docker/Docker Compose. Use ao criar um projeto com essa stack, adicionar apps/pacotes, módulos, endpoints, repositórios, rotas, queries, stores, formulários ou componentes, ou ajustar configs (Docker, tsconfig, ESLint, Prettier, Turbo, tsup, Vite, shadcn).
+description: Ferramentas, estrutura e convenções de um monorepo TypeScript full-stack com pnpm + Turborepo, API Node (Express 5 em camadas controller/service/repository com injeção de dependência, PostgreSQL, Zod, Socket.IO, config via .env), front React 19 + Vite (TanStack Router, TanStack Query, Zustand, React Hook Form + Zod, Tailwind v4, shadcn/Base UI), pacote de contratos compartilhados, testes com Vitest e Docker/Docker Compose. Use ao criar um projeto com essa stack, adicionar apps/pacotes, módulos, endpoints, repositórios, rotas, queries, stores, contextos, formulários, componentes ou testes, ou ajustar configs (Docker, tsconfig, ESLint, Prettier, Turbo, tsup, Vite, Vitest, shadcn).
 ---
 
 # ts-fullstack-monorepo
@@ -21,6 +21,7 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 | Contratos (`packages/contracts`) | DTOs, tipos HTTP, mapas de eventos e schemas Zod compartilhados, consumidos como fonte `.ts` |
 | Infra | **Dockerfile por app** + **docker-compose.yml** na raiz (postgres, api, web) |
 | Qualidade | ESLint 10 (flat) + typescript-eslint + react-hooks + react-refresh; Prettier 3 + `prettier-plugin-tailwindcss` |
+| Testes | **Vitest** (sempre) + `@vitest/coverage-v8`; no front `@testing-library/react` + `jsdom` |
 | Tooling extra | MCP `shadcn` em `.mcp.json` (`npx shadcn@latest mcp --cwd apps/web`) |
 
 ## Estrutura
@@ -45,7 +46,7 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 │  │  │     ├─ <modulo>.routes.ts
 │  │  │     └─ utils/              # utilitários só do módulo
 │  │  ├─ Dockerfile
-│  │  └─ tsup.config.ts  tsconfig.json  .env.example
+│  │  └─ tsup.config.ts  vitest.config.ts  tsconfig.json  .env.example
 │  └─ web/
 │     ├─ src/
 │     │  ├─ main.tsx               # QueryClientProvider + RouterProvider + ThemeProvider
@@ -137,7 +138,13 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 14. **Prettier**: sem `;`, aspas duplas, 2 espaços, trailing comma `es5`, 80 colunas, LF.
 15. **Nomes**: arquivos kebab-case (sufixos `.controller.ts`, `.service.ts`, `.repository.ts`,
     `.routes.ts` na API); componentes/classes PascalCase; constantes `UPPER_SNAKE_CASE`.
+    **Sempre em inglês**: funções, variáveis, parâmetros, classes, tipos, arquivos e, nos testes,
+    os textos de `describe` e `it`/`test` (`it("throws NOT_FOUND when the item does not exist")`).
+    Português só em texto exibido ao usuário (UI, mensagens de erro da API) e em comentários.
 16. **Versões alinhadas** de `typescript`, `eslint`, `@types/*` em todos os pacotes.
+17. **Testes sempre com Vitest** (api, web e pacotes) — nunca Jest ou outro runner. Arquivos
+    `*.test.ts(x)` ao lado do código; na api, dublês injetados pelo construtor; no front,
+    Testing Library + jsdom. Detalhes em [references/testing.md](references/testing.md).
 
 ## Comandos
 
@@ -146,6 +153,7 @@ pnpm dev                                   # turbo dev (todos os apps)
 pnpm build                                 # turbo build
 pnpm lint
 pnpm typecheck
+pnpm test                                  # vitest run em todos os pacotes (turbo)
 pnpm format
 pnpm --filter <app> add <dep>              # dependência num pacote
 pnpm dlx shadcn@latest add <comp> -c apps/web
@@ -159,6 +167,7 @@ docker compose up --build                  # stack completa
 - Web e UI (Router, Query, Zustand, formulários, componentes, shadcn, tema) → [references/web-ui.md](references/web-ui.md)
 - Docker e Compose → [references/docker.md](references/docker.md)
 - Workspace e configs (pnpm, Turbo, contratos, tsconfig, ESLint, Prettier) → [references/workspace.md](references/workspace.md)
+- Testes (Vitest na api, web e pacotes; Testing Library no front) → [references/testing.md](references/testing.md)
 
 ## Checklist antes de concluir
 
@@ -174,4 +183,6 @@ docker compose up --build                  # stack completa
 - [ ] ORM: usado o já existente ou o escolhido pelo usuário (nunca escolhido sem perguntar).
 - [ ] Dados do servidor via TanStack Query (keys em `constants.ts`), formulários com RHF + Zod.
 - [ ] Contextos em `context/<nome>-context.tsx` (geral em `src/context`, de feature em `feature/<feature>/context`), com Provider + hook `use<Nome>Context` que lança erro fora do provider.
-- [ ] `pnpm typecheck` e `pnpm lint` passam; arquivos formatados com Prettier.
+- [ ] Testes com **Vitest** (`*.test.ts(x)` ao lado do arquivo) para services, utilitários, schemas e componentes novos.
+- [ ] Funções, variáveis e textos de `describe`/`it` em inglês.
+- [ ] `pnpm typecheck`, `pnpm lint` e `pnpm test` passam; arquivos formatados com Prettier.

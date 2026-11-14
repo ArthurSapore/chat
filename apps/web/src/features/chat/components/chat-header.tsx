@@ -17,7 +17,10 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   return (
     <header className="flex items-center gap-3 border-b px-4 py-3">
-      <UserAvatar name={userName} className="bg-primary text-primary-foreground" />
+      <UserAvatar
+        name={userName}
+        className="bg-primary text-primary-foreground"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{userName}</p>
         <p className="truncate text-xs text-muted-foreground">

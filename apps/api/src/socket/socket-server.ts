@@ -23,7 +23,8 @@ export function createSocketServer(
   const chatGateway = new ChatGateway(
     io,
     container.conversationService,
-    container.messageService
+    container.messageService,
+    container.receiptService
   )
 
   io.on("connection", (socket) => {

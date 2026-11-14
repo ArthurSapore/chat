@@ -17,7 +17,9 @@ export const ChatSessionContext = createContext<ChatSessionValue | null>(null)
 export function useChatSession() {
   const value = useContext(ChatSessionContext)
   if (!value) {
-    throw new Error("useChatSession precisa estar dentro de <ChatSessionProvider>")
+    throw new Error(
+      "useChatSession precisa estar dentro de <ChatSessionProvider>"
+    )
   }
   return value
 }

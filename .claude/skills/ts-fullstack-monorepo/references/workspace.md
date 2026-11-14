@@ -5,8 +5,9 @@
 - `pnpm-workspace.yaml`: `apps/*` e `packages/*`; `allowBuilds` só para o necessário (`esbuild: true`).
 - Dependências internas com `"workspace:*"`.
 - `turbo.json`: `build` depende de `^build` e gera `dist/**` (inputs incluem `.env*`);
-  `lint`, `format`, `typecheck` dependem dos equivalentes upstream; `dev` com `cache: false, persistent: true`.
-- Todo pacote expõe os scripts que o turbo orquestra: `lint`, `typecheck` (`tsc --noEmit`) e,
+  `lint`, `format`, `typecheck` dependem dos equivalentes upstream; `test` depende de `^build`
+  com `outputs: ["coverage/**"]`; `dev` com `cache: false, persistent: true`.
+- Todo pacote expõe os scripts que o turbo orquestra: `lint`, `typecheck` (`tsc --noEmit`), `test` (`vitest run`) e,
   quando aplicável, `dev`, `build`, `format`.
 
 ## Pacotes internos "source-only"

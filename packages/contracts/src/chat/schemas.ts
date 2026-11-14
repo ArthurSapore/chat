@@ -5,8 +5,41 @@ import { idSchema, isoDateStringSchema } from "../common"
 export const MESSAGE_MAX_LENGTH = 4000
 export const MESSAGES_PAGE_DEFAULT_LIMIT = 40
 export const MESSAGES_PAGE_MAX_LIMIT = 100
+/** Prazo para o autor editar uma mensagem, contado a partir do envio. */
+export const MESSAGE_EDIT_WINDOW_MS = 15 * 60_000
+/** Tamanho máximo do trecho citado guardado numa resposta. */
+export const REPLY_PREVIEW_MAX_LENGTH = 200
 
 /* -------------------------------- entidades ------------------------------- */
+
+export const reactionTypes = [
+  "like",
+  "love",
+  "laugh",
+  "wow",
+  "sad",
+  "dislike",
+] as const
+export const reactionTypeSchema = z.enum(reactionTypes)
+export type ReactionType = z.infer<typeof reactionTypeSchema>
+
+/** Cada usuário tem no máximo uma reação por mensagem. */
+export const messageReactionSchema = z.object({
+  userId: idSchema,
+  type: reactionTypeSchema,
+})
+export type MessageReaction = z.infer<typeof messageReactionSchema>
+
+/**
+ * Cópia do trecho citado no momento da resposta: a citação aparece mesmo que
+ * a mensagem original não esteja carregada.
+ */
+export const replyPreviewSchema = z.object({
+  id: idSchema,
+  senderId: idSchema,
+  content: z.string(),
+})
+export type ReplyPreview = z.infer<typeof replyPreviewSchema>
 
 export const chatMessageSchema = z.object({
   id: idSchema,
@@ -14,8 +47,42 @@ export const chatMessageSchema = z.object({
   senderId: idSchema,
   content: z.string(),
   createdAt: isoDateStringSchema,
+  /** Preenchido quando o autor edita a mensagem. */
+  editedAt: isoDateStringSchema.nullable(),
+  replyTo: replyPreviewSchema.nullable(),
+  reactions: z.array(messageReactionSchema),
+  /**
+   * Id gerado pelo cliente no envio. Permite trocar a mensagem otimista pela
+   * confirmada e torna o reenvio idempotente.
+   */
+  clientId: z.string().nullable(),
 })
 export type ChatMessage = z.infer<typeof chatMessageSchema>
+
+/**
+ * Até onde cada participante já recebeu e já leu a conversa. Os valores são o
+ * `createdAt` da última mensagem entregue/lida: toda mensagem com
+ * `createdAt <=` ao marcador conta como entregue/lida. Um registro por pessoa,
+ * em vez de um recibo por mensagem.
+ */
+export const memberReceiptSchema = z.object({
+  conversationId: idSchema,
+  userId: idSchema,
+  deliveredAt: isoDateStringSchema.nullable(),
+  readAt: isoDateStringSchema.nullable(),
+})
+export type MemberReceipt = z.infer<typeof memberReceiptSchema>
+
+/** Resposta do join: os marcadores de todos os participantes. */
+export interface ConversationJoined {
+  conversationId: string
+  receipts: MemberReceipt[]
+}
+
+/** Se o prazo de edição ainda está aberto em `now`. */
+export function isWithinEditWindow(createdAt: string, now = Date.now()) {
+  return now - new Date(createdAt).getTime() <= MESSAGE_EDIT_WINDOW_MS
+}
 
 /* ------------------------------ socket: entrada ---------------------------- */
 
@@ -24,15 +91,43 @@ export const conversationRefSchema = z.object({
 })
 export type ConversationRef = z.infer<typeof conversationRefSchema>
 
+const messageContentSchema = z
+  .string()
+  .trim()
+  .min(1, "A mensagem não pode ser vazia")
+  .max(MESSAGE_MAX_LENGTH)
+
 export const sendMessageSchema = z.object({
   conversationId: idSchema,
-  content: z
-    .string()
-    .trim()
-    .min(1, "A mensagem não pode ser vazia")
-    .max(MESSAGE_MAX_LENGTH),
+  content: messageContentSchema,
+  /** Mensagem que está sendo respondida (da mesma conversa). */
+  replyToId: idSchema.optional(),
+  /** Mesmo clientId em um reenvio devolve a mensagem já criada. */
+  clientId: z.uuid().optional(),
 })
 export type SendMessageInput = z.infer<typeof sendMessageSchema>
+
+/** "Recebi/li até esta mensagem" (inclusive). Marcadores só avançam. */
+export const receiptUpdateSchema = z.object({
+  conversationId: idSchema,
+  messageId: idSchema,
+})
+export type ReceiptUpdateInput = z.infer<typeof receiptUpdateSchema>
+
+export const editMessageSchema = z.object({
+  messageId: idSchema,
+  content: messageContentSchema,
+})
+export type EditMessageInput = z.infer<typeof editMessageSchema>
+
+/**
+ * Alterna a reação do usuário: tipo diferente substitui, mesmo tipo remove.
+ */
+export const reactToMessageSchema = z.object({
+  messageId: idSchema,
+  type: reactionTypeSchema,
+})
+export type ReactToMessageInput = z.infer<typeof reactToMessageSchema>
 
 /* --------------------------- REST: histórico ------------------------------ */
 

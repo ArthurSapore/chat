@@ -9,7 +9,11 @@ const labels: Record<ConnectionStatus, string> = {
 }
 
 /** Mostra o estado da conexão do socket da sessão. */
-export function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
+export function ConnectionStatusBadge({
+  status,
+}: {
+  status: ConnectionStatus
+}) {
   return (
     <span
       role="status"

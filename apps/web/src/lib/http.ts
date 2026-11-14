@@ -46,9 +46,9 @@ export async function apiFetch<T>(
   })
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as
-      | ApiErrorBody
-      | null
+    const payload = (await response
+      .json()
+      .catch(() => null)) as ApiErrorBody | null
     throw new ApiRequestError(
       payload?.error ?? {
         code: "INTERNAL_ERROR",
