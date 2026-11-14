@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   IconArrowDown,
   IconArrowUp,
@@ -10,8 +9,13 @@ import {
   IconLoader2,
   IconX,
 } from "@tabler/icons-react"
+import * as React from "react"
 
-import { Bubble, BubbleContent, BubbleGroup } from "@workspace/ui/components/bubble"
+import {
+  Bubble,
+  BubbleContent,
+  BubbleGroup,
+} from "@workspace/ui/components/bubble"
 import { Button } from "@workspace/ui/components/button"
 import {
   MessageScroller,
@@ -40,6 +44,7 @@ import {
   type Page,
   type Reaction,
 } from "@/lib/fake-chat-api"
+import { socket } from "@/services/socket"
 
 /** Quantas mensagens cada requisição traz. */
 const PAGE_SIZE = 40
@@ -267,9 +272,12 @@ function ChatRoom({
     const viewport = viewportRef.current
     if (!viewport) return null
     const top = viewport.getBoundingClientRect().top
-    for (const el of viewport.querySelectorAll<HTMLElement>("[data-message-id]")) {
+    for (const el of viewport.querySelectorAll<HTMLElement>(
+      "[data-message-id]"
+    )) {
       const rect = el.getBoundingClientRect()
-      if (rect.bottom > top) return { id: el.dataset.messageId!, top: rect.top - top }
+      if (rect.bottom > top)
+        return { id: el.dataset.messageId!, top: rect.top - top }
     }
     return null
   }
@@ -278,7 +286,8 @@ function ChatRoom({
     if (jumpingRef.current) return
     const el = e.currentTarget
     if (el.scrollTop < EDGE_PX) loadOlder()
-    else if (el.scrollHeight - el.scrollTop - el.clientHeight < EDGE_PX) loadNewer()
+    else if (el.scrollHeight - el.scrollTop - el.clientHeight < EDGE_PX)
+      loadNewer()
   }
 
   /* --------------------------------- saltos --------------------------------- */
@@ -347,9 +356,13 @@ function ChatRoom({
       // Corrige o destino ao fim da animação (alturas estimadas no caminho).
       const viewport = viewportRef.current
       if (viewport) {
-        const fix = () => scrollToMessage(id, { align: "center", behavior: "smooth" })
+        const fix = () =>
+          scrollToMessage(id, { align: "center", behavior: "smooth" })
         viewport.addEventListener("scrollend", fix, { once: true })
-        window.setTimeout(() => viewport.removeEventListener("scrollend", fix), 1500)
+        window.setTimeout(
+          () => viewport.removeEventListener("scrollend", fix),
+          1500
+        )
       }
       return
     }
@@ -421,7 +434,13 @@ function ChatRoom({
 
     const botSeq = nextSeq()
     const botId = `m-${botSeq}`
-    appendMessage({ id: botId, seq: botSeq, role: "assistant", text: "", time: "" })
+    appendMessage({
+      id: botId,
+      seq: botSeq,
+      role: "assistant",
+      text: "",
+      time: "",
+    })
     const bot: ChatMessage = {
       id: botId,
       seq: botSeq,
@@ -504,7 +523,7 @@ function ChatRoom({
               onChange={(e) => setJumpInput(e.target.value)}
               placeholder="ir para…"
               aria-label="Número da mensagem"
-              className="w-20 bg-transparent pe-2 text-sm outline-none [appearance:textfield] placeholder:text-muted-foreground [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-20 [appearance:textfield] bg-transparent pe-2 text-sm outline-none placeholder:text-muted-foreground [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
           <Button size="sm" variant="outline" type="submit">
@@ -552,12 +571,14 @@ function ChatRoom({
         {/* Indicadores de carregamento (fora do Content, para não virarem "itens") */}
         {loading === "initial" && (
           <FloatingPill className="top-1/2 -translate-y-1/2">
-            <IconLoader2 className="size-3.5 animate-spin" /> Carregando conversa…
+            <IconLoader2 className="size-3.5 animate-spin" /> Carregando
+            conversa…
           </FloatingPill>
         )}
         {loading === "older" && (
           <FloatingPill className="top-3">
-            <IconLoader2 className="size-3.5 animate-spin" /> Carregando anteriores…
+            <IconLoader2 className="size-3.5 animate-spin" /> Carregando
+            anteriores…
           </FloatingPill>
         )}
         {loading === "jump" && (
@@ -567,7 +588,8 @@ function ChatRoom({
         )}
         {loading === "newer" && (
           <FloatingPill className="bottom-16">
-            <IconLoader2 className="size-3.5 animate-spin" /> Carregando seguintes…
+            <IconLoader2 className="size-3.5 animate-spin" /> Carregando
+            seguintes…
           </FloatingPill>
         )}
         {notFound && (
@@ -604,8 +626,10 @@ function ChatRoom({
           {SUGGESTIONS.map(({ icon: Icon, label }) => (
             <Bubble key={label} variant="secondary">
               <BubbleContent
-                render={<button type="button" onClick={() => void send(label)} />}
-                disabled={isStreaming}
+                render={
+                  <button type="button" onClick={() => void send(label)} />
+                }
+                aria-disabled={isStreaming}
                 className="flex items-center gap-2 py-1.5 text-xs disabled:opacity-50"
               >
                 <Icon className="size-4 text-primary" />
@@ -654,13 +678,22 @@ function ChatRoom({
               }}
               rows={1}
               placeholder="Escreva uma mensagem… (Enter envia, Shift+Enter quebra linha)"
-              className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none field-sizing-content placeholder:text-muted-foreground"
+              className="field-sizing-content max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
             />
             <Button
               type="submit"
               size="icon"
               disabled={!draft.trim() || isStreaming}
               aria-label="Enviar"
+              onClick={() => {
+                socket.emit(
+                  "conversation:join",
+                  { conversationId: "conversation-123" },
+                  (response: unknown) => {
+                    console.log(response)
+                  }
+                )
+              }}
             >
               <IconArrowUp />
             </Button>

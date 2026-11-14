@@ -107,7 +107,7 @@ function preview(m: ChatMessage): ReplyPreview {
 
 function generate(): ChatMessage[] {
   const rand = mulberry32(42)
-  const pick = <T,>(list: T[]) => list[Math.floor(rand() * list.length)]
+  const pick = <T>(list: T[]) => list[Math.floor(rand() * list.length)]
   const out: ChatMessage[] = []
 
   for (let seq = 1; seq <= TOTAL; seq++) {
@@ -184,7 +184,10 @@ export async function fetchAround(
   await wait()
   const i = indexOf(id)
   if (i < 0) return null
-  const start = Math.max(0, Math.min(i - Math.floor(limit / 2), db.length - limit))
+  const start = Math.max(
+    0,
+    Math.min(i - Math.floor(limit / 2), db.length - limit)
+  )
   return slice(start, start + limit)
 }
 
@@ -207,5 +210,6 @@ export function appendMessage(m: ChatMessage) {
 
 export function updateMessage(id: string, patch: Partial<ChatMessage>) {
   const i = indexOf(id)
-  if (i >= 0) db[i] = { ...db[i], ...patch, live: undefined, streaming: undefined }
+  if (i >= 0)
+    db[i] = { ...db[i], ...patch, live: undefined, streaming: undefined }
 }
