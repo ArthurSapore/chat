@@ -1,4 +1,4 @@
-import type { ISODateString } from "./common"
+import type { ISODateString } from "@workspace/contracts/dtos/common"
 
 export interface User {
   id: string
