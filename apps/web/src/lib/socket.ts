@@ -5,8 +5,7 @@ import type {
 } from "@workspace/contracts"
 import { io, type Socket } from "socket.io-client"
 
-import { env } from "@/config/env"
-import { ApiRequestError } from "@/lib/http"
+import { API_URL, ApiRequestError } from "@/config/http"
 
 export type ChatSocket = Socket<ServerToClientEvents, ClientToServerEvents>
 
@@ -14,7 +13,7 @@ const ACK_TIMEOUT_MS = 10_000
 
 /** Cada sessão (usuário) tem o próprio socket, autenticado com o seu token. */
 export function createChatSocket(token: string): ChatSocket {
-  return io(env.API_URL, {
+  return io(API_URL, {
     autoConnect: false,
     // Sem isso, dois sockets no mesmo navegador compartilhariam a conexão
     // (o Socket.IO reaproveita o Manager por URL).

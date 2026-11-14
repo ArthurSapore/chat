@@ -165,6 +165,11 @@ export interface MessagesQueryParams {
   limit?: number
 }
 
+/** DTO de `MESSAGE_ROUTES.listConversationMessages`. */
+export interface ListConversationMessagesRequest extends MessagesQueryParams {
+  conversationId: string
+}
+
 export const messagePageSchema = z.object({
   items: z.array(chatMessageSchema),
   hasOlder: z.boolean(),

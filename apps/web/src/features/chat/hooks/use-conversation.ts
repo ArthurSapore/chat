@@ -4,6 +4,7 @@ import {
   type ChatMessage,
   type MemberReceipt,
   type MessagePage,
+  type MessagesQueryParams,
   type ReactionType,
 } from "@workspace/contracts"
 import {
@@ -15,10 +16,10 @@ import {
   useState,
 } from "react"
 
-import { fetchMessages } from "@/features/chat/api/messages"
 import { useTypingIndicator } from "@/features/chat/hooks/use-typing-indicator"
 import { useTypingUsers } from "@/features/chat/hooks/use-typing-users"
-import { useChatSession } from "@/features/chat/session/chat-session-context"
+import { useChatSessionContext } from "@/features/chat/context/chat-session-context"
+import { listConversationMessagesRequest } from "@/features/chat/service/requests"
 import type { ConversationMessage, LocalStatus } from "@/features/chat/types"
 import { emitWithAck } from "@/lib/socket"
 
@@ -148,6 +149,20 @@ function reducer(state: State, action: Action): State {
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Erro inesperado"
 
+/** Página de mensagens da conversa (atalho sobre o request). */
+async function fetchPage(
+  token: string,
+  conversationId: string,
+  query: MessagesQueryParams = {},
+  signal?: AbortSignal
+) {
+  const { data } = await listConversationMessagesRequest(
+    { conversationId, ...query },
+    { token, signal }
+  )
+  return data
+}
+
 interface PendingSend {
   content: string
   replyToId?: string
@@ -161,7 +176,7 @@ interface PendingSend {
  * e de entrar de novo (com sincronização) a cada reconexão.
  */
 export function useConversation(conversationId: string) {
-  const { socket, status: connection, user } = useChatSession()
+  const { socket, status: connection, user } = useChatSessionContext()
   const { token } = user
   const [state, dispatch] = useReducer(reducer, initialState)
   const [isJoined, setIsJoined] = useState(false)
@@ -195,7 +210,7 @@ export function useConversation(conversationId: string) {
     sentReceiptsRef.current = { delivered: "", read: "" }
     const controller = new AbortController()
 
-    fetchMessages(token, conversationId, {}, controller.signal)
+    fetchPage(token, conversationId, {}, controller.signal)
       .then((page) =>
         dispatch({ type: "merge", items: page.items, hasOlder: page.hasOlder })
       )
@@ -221,7 +236,7 @@ export function useConversation(conversationId: string) {
       try {
         if (!last) {
           // O histórico inicial pode ter sido lido antes do join: relê.
-          const page = await fetchMessages(token, conversationId)
+          const page = await fetchPage(token, conversationId)
           if (!cancelled) {
             dispatch({
               type: "merge",
@@ -232,7 +247,7 @@ export function useConversation(conversationId: string) {
           return
         }
 
-        const page = await fetchMessages(token, conversationId, {
+        const page = await fetchPage(token, conversationId, {
           after: last.id,
           limit: MESSAGES_PAGE_MAX_LIMIT,
         })
@@ -242,11 +257,11 @@ export function useConversation(conversationId: string) {
           return
         }
         // Perdemos mais que uma página: recomeça do presente.
-        const latest = await fetchMessages(token, conversationId)
+        const latest = await fetchPage(token, conversationId)
         if (!cancelled) dispatch({ type: "replace", page: latest })
       } catch {
         // Cursor pode não existir mais (ex.: servidor reiniciou sem banco).
-        const latest = await fetchMessages(token, conversationId)
+        const latest = await fetchPage(token, conversationId)
         if (!cancelled) dispatch({ type: "replace", page: latest })
       }
     }
@@ -496,7 +511,7 @@ export function useConversation(conversationId: string) {
     loadingOlderRef.current = true
     setIsLoadingOlder(true)
     try {
-      const page = await fetchMessages(token, conversationId, {
+      const page = await fetchPage(token, conversationId, {
         before: first.id,
       })
       dispatch({ type: "merge", items: page.items, hasOlder: page.hasOlder })

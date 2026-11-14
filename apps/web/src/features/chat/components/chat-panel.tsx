@@ -13,7 +13,7 @@ import type { ComposerMode } from "@/features/chat/types"
  * Composição de um chat: liga o estado da conversa (useConversation) aos
  * componentes de apresentação e coordena o modo do campo de escrita
  * (responder/editar), que é disparado pela lista e consumido pelo campo.
- * Precisa estar dentro de um <ChatSessionProvider>.
+ * Precisa estar dentro de um <ChatSessionContextProvider>.
  */
 export function ChatPanel({ conversationId }: { conversationId: string }) {
   const conversation = useConversation(conversationId)

@@ -124,7 +124,10 @@ describe("ReceiptService", () => {
   describe("validation", () => {
     it.each([
       ["does not exist", null],
-      ["belongs to another conversation", makeMessage({ conversationId: "conv-2" })],
+      [
+        "belongs to another conversation",
+        makeMessage({ conversationId: "conv-2" }),
+      ],
     ])("throws NOT_FOUND when the message %s", async (_, message) => {
       const { sut, messages, receipts } = makeSut()
       messages.findById.mockResolvedValue(message)

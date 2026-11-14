@@ -9,8 +9,11 @@ Exemplos completos de cada camada estão nas referências da skill base
 
 ```
 packages/contracts/src/dtos/
-  <feature>.ts                         # NOVO: DTO, schemas Zod de entrada, tipos inferidos
+  <feature>.ts                         # NOVO: DTO, schemas Zod de entrada, tipos inferidos, DTOs <Acao>Request
   index.ts                             # ALTERAR: export * from "./<feature>"
+packages/contracts/src/<features>/
+  routes.ts                            # NOVO: <FEATURE>_PATHS (api) + <FEATURE>_ROUTES (front)
+packages/contracts/src/index.ts        # ALTERAR: export * from "./<features>/routes"
 
 apps/api/src/
   db/...                               # NOVO: schema/model + migration (formato do ORM)
@@ -23,7 +26,7 @@ apps/api/src/
     <features>.gateway.ts              # NOVO (só se tempo real)
     utils/                             # NOVO (só se precisar)
   container.ts                         # ALTERAR: instanciar repository → service → controller → routes
-  app.ts                               # ALTERAR: this.express.use("/<features>", c.<features>Routes.router)
+  app.ts                               # ALTERAR: this.express.use(c.<features>Routes.router) (caminhos completos do contracts)
   config/env.ts                        # ALTERAR (só se houver variável nova)
 
 apps/web/src/
@@ -36,8 +39,7 @@ apps/web/src/
       query-options.ts                 # NOVO
       mutation-options.ts              # NOVO
     service/
-      routes.ts                        # NOVO
-      requests.ts                      # NOVO
+      requests.ts                      # NOVO: <acao>Request(dto) → http.request(<FEATURE>_ROUTES…)
     context/                           # NOVO (só se houver estado de subárvore)
     utils/                             # NOVO (só se precisar)
     constants.ts                       # NOVO: keys do Query + constantes
@@ -150,45 +152,55 @@ equivalentes no ORM, sempre devolvendo DTO.
 ### Front
 
 ```ts
-// feature/<feature>/service/routes.ts
-export const <feature>Routes = {
+// packages/contracts/src/<features>/routes.ts — rotas compartilhadas (api registra, front chama)
+import { buildPath, type HttpRequestConfig } from "../routes"
+
+export const <FEATURE>_PATHS = {
   list: "/<features>",
-  detail(id: string) {
-    return `/<features>/${id}`
+  detail: "/<features>/:id",
+} as const
+
+export const <FEATURE>_ROUTES = {
+  list(dto: List<Features>Request): HttpRequestConfig {
+    return { method: "GET", url: <FEATURE>_PATHS.list, params: dto }
+  },
+  getById({ id }: Get<Feature>Request): HttpRequestConfig {
+    return { method: "GET", url: buildPath(<FEATURE>_PATHS.detail, { id }) }
+  },
+  create(dto: Create<Feature>Request): HttpRequestConfig {
+    return { method: "POST", url: <FEATURE>_PATHS.list, data: dto }
+  },
+  update({ id, ...data }: Update<Feature>Request): HttpRequestConfig {
+    return { method: "PATCH", url: buildPath(<FEATURE>_PATHS.detail, { id }), data }
+  },
+  remove({ id }: Remove<Feature>Request): HttpRequestConfig {
+    return { method: "DELETE", url: buildPath(<FEATURE>_PATHS.detail, { id }) }
   },
 } as const
 ```
 
 ```ts
-// feature/<feature>/service/requests.ts
-export function list(query: List<Features>Query) {
-  const params = new URLSearchParams({
-    page: String(query.page),
-    pageSize: String(query.pageSize),
-  })
-  return api<Paginated<<Feature>Dto>>(`${<feature>Routes.list}?${params}`)
+// feature/<feature>/service/requests.ts — só escolhe a rota e repassa o DTO
+import { http } from "@/config/http"
+
+export async function list<Features>Request(dto: List<Features>Request) {
+  return http.request<Paginated<<Feature>Dto>>(<FEATURE>_ROUTES.list(dto))
 }
 
-export function getById(id: string) {
-  return api<<Feature>Dto>(<feature>Routes.detail(id))
+export async function get<Feature>Request(dto: Get<Feature>Request) {
+  return http.request<<Feature>Dto>(<FEATURE>_ROUTES.getById(dto))
 }
 
-export function create(input: Create<Feature>Input) {
-  return api<<Feature>Dto>(<feature>Routes.list, {
-    method: "POST",
-    body: JSON.stringify(input),
-  })
+export async function create<Feature>Request(dto: Create<Feature>Request) {
+  return http.request<<Feature>Dto>(<FEATURE>_ROUTES.create(dto))
 }
 
-export function update(id: string, input: Update<Feature>Input) {
-  return api<<Feature>Dto>(<feature>Routes.detail(id), {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  })
+export async function update<Feature>Request(dto: Update<Feature>Request) {
+  return http.request<<Feature>Dto>(<FEATURE>_ROUTES.update(dto))
 }
 
-export function remove(id: string) {
-  return api<void>(<feature>Routes.detail(id), { method: "DELETE" })
+export async function remove<Feature>Request(dto: Remove<Feature>Request) {
+  return http.request<void>(<FEATURE>_ROUTES.remove(dto))
 }
 ```
 
@@ -210,8 +222,9 @@ export const <feature>Keys = {
 export function <features>QueryOptions(query: List<Features>Query) {
   return queryOptions({
     queryKey: <feature>Keys.list(query),
-    queryFn() {
-      return <feature>Requests.list(query)
+    async queryFn() {
+      const { data } = await list<Features>Request(query)
+      return data
     },
   })
 }
@@ -219,8 +232,9 @@ export function <features>QueryOptions(query: List<Features>Query) {
 export function <feature>QueryOptions(id: string) {
   return queryOptions({
     queryKey: <feature>Keys.detail(id),
-    queryFn() {
-      return <feature>Requests.getById(id)
+    async queryFn() {
+      const { data } = await get<Feature>Request({ id })
+      return data
     },
   })
 }
@@ -230,7 +244,10 @@ export function <feature>QueryOptions(id: string) {
 // feature/<feature>/hooks/mutation-options.ts
 export function create<Feature>MutationOptions(queryClient: QueryClient) {
   return mutationOptions({
-    mutationFn: <feature>Requests.create,
+    async mutationFn(dto: Create<Feature>Request) {
+      const { data } = await create<Feature>Request(dto)
+      return data
+    },
     onSuccess() {
       return queryClient.invalidateQueries({ queryKey: <feature>Keys.all })
     },

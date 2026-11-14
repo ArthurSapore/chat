@@ -1,4 +1,4 @@
-import { apiRoutes } from "@workspace/contracts"
+import { SYSTEM_PATHS } from "@workspace/contracts"
 import cors from "cors"
 import express, { type Express } from "express"
 
@@ -15,7 +15,7 @@ export function createApp(container: Container): Express {
   app.use(express.json())
 
   // Rotas públicas
-  app.get(apiRoutes.health, (_req, res) => {
+  app.get(SYSTEM_PATHS.health, (_req, res) => {
     res.json({ status: "ok" })
   })
 

@@ -66,7 +66,7 @@ Resumo das regras da skill base que mais se aplicam a uma feature nova:
 - **Config** só via `env` validado com Zod; variável nova também no `.env.example` (e no compose).
 - **Front em funções com `function`** (sem arrow sempre que possível).
 - **Estrutura da feature no front**: `components/`, `hooks/{query-options,mutation-options}.ts`,
-  `service/{routes,requests}.ts`, `context/` e `utils/` (se precisar), `constants.ts`,
+  `service/requests.ts` (`<acao>Request(dto)` → `http.request(<FEATURE>_ROUTES.<acao>(dto))`), `context/` e `utils/` (se precisar), `constants.ts`,
   `schemas.ts`, `types.ts`. Keys do Query em `constants.ts`.
 - **Estado**: servidor no TanStack Query; formulário no React Hook Form; navegação/filtros no
   TanStack Router (`validateSearch`); subárvore em Context; global de cliente em Zustand.

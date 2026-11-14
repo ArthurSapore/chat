@@ -30,18 +30,21 @@ Consequências:
 - Cada consumidor declara `paths` no tsconfig (`"@workspace/ui/*": ["../../packages/ui/src/*"]`).
 - `packages/contracts` contém tipos **e schemas Zod** de entrada compartilhados (`zod` como
   dependência): a API valida com o schema e o front usa o mesmo schema no `zodResolver`.
-  Nada além disso de runtime (sem banco, fetch ou React).
+  Também contém as **rotas HTTP** de cada domínio (`<DOMINIO>_PATHS` e `<DOMINIO>_ROUTES`).
+  Nada além disso de runtime (sem banco, axios ou React).
 
 ### Estrutura do `packages/contracts`
 
 ```
 src/
-  index.ts        # export * from "./dtos"; export * from "./routes"
-  routes.ts       # HttpMethod, ApiErrorBody { status, message }, tipos de request/response
+  index.ts        # export * from "./dtos"; export * from "./routes"; export * das rotas de domínio
+  routes.ts       # HttpMethod, HttpRequestConfig, buildPath, ApiErrorBody
   dtos/
     index.ts      # export * de cada domínio
     common.ts     # ISODateString e afins
-    <dominio>.ts  # DTOs, schemas Zod de entrada (+ z.infer) e mapas de eventos
+    <dominio>.ts  # DTOs, schemas Zod de entrada (+ z.infer), DTOs <Acao>Request e mapas de eventos
+  <dominio>/
+    routes.ts     # <DOMINIO>_PATHS (padrões Express) e <DOMINIO>_ROUTES (configs de requisição)
 ```
 
 ```ts
@@ -58,6 +61,41 @@ export interface ItemDto {
 export const createItemSchema = z.object({ name: z.string().trim().min(1) })
 export type CreateItemInput = z.infer<typeof createItemSchema>
 ```
+
+### Rotas HTTP (`<DOMINIO>_PATHS` / `<DOMINIO>_ROUTES`)
+
+Front e api usam a **mesma** definição de rota — nunca strings de URL soltas em nenhum dos dois.
+
+```ts
+// src/organization/routes.ts
+import { buildPath, type HttpRequestConfig } from "../routes"
+import type { CreateNewOrganizationRequest } from "../dtos/organization"
+
+/** Padrões Express — a api faz `router.post(ORGANIZATION_PATHS.organizations, ...)`. */
+export const ORGANIZATION_PATHS = {
+  organizations: "/organizations",
+  organization: "/organizations/:organizationId",
+} as const
+
+/** O front faz `http.request(ORGANIZATION_ROUTES.createNewOrganization(dto))`. */
+export const ORGANIZATION_ROUTES = {
+  createNewOrganization(dto: CreateNewOrganizationRequest): HttpRequestConfig {
+    return { method: "POST", url: ORGANIZATION_PATHS.organizations, data: dto }
+  },
+  getOrganization({ organizationId }: { organizationId: string }): HttpRequestConfig {
+    return {
+      method: "GET",
+      url: buildPath(ORGANIZATION_PATHS.organization, { organizationId }),
+    }
+  },
+} as const
+```
+
+- `HttpRequestConfig` (`{ method, url, params?, data? }`) é compatível com o `AxiosRequestConfig`,
+  mas o contracts **não** depende do axios.
+- Path params via `buildPath` (codifica os valores); query string em `params`; corpo em `data`.
+- Nomes: `<DOMINIO>_PATHS` / `<DOMINIO>_ROUTES` em `UPPER_SNAKE_CASE`; ações em camelCase iguais
+  às dos requests do front (`createNewOrganization` ↔ `createNewOrganizationRequest`).
 
 Datas trafegam como string ISO (`ISODateString`). Se houver mais de um domínio com eventos,
 cada um exporta seu mapa (`ItemClientEvents`…) e `dtos/index.ts` os combina por interseção
@@ -171,5 +209,6 @@ imports não relativos.
 
 - `.gitignore` com `.env*` e `!.env.example`: cada app (e a raiz, para o compose) tem um
   `.env.example` commitado com todas as chaves.
-- API lê via `dotenv/config` + Zod; web via `VITE_*` validadas com Zod em `src/config/env.ts`.
+- API lê via `dotenv/config` + Zod; web lê `VITE_*` via `import.meta.env` (a URL da API fica
+  em `src/config/http.ts` como `API_URL`).
 - `VITE_*` são embutidas no build — no Docker entram como `ARG` de build, não como env de runtime.

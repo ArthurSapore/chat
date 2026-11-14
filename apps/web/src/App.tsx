@@ -1,6 +1,6 @@
 import { DEV_USERS } from "@/config/dev-users"
 import { ChatPanel } from "@/features/chat/components/chat-panel"
-import { ChatSessionProvider } from "@/features/chat/session/chat-session-provider"
+import { ChatSessionContextProvider } from "@/features/chat/context/chat-session-context"
 
 // Enquanto não há lista de conversas, usa a conversa de demonstração da API.
 const DEMO_CONVERSATION_ID = "conversation-123"
@@ -13,9 +13,9 @@ export function App() {
   return (
     <main className="grid h-svh grid-rows-2 divide-y md:grid-cols-2 md:grid-rows-1 md:divide-x md:divide-y-0">
       {DEV_USERS.map((user) => (
-        <ChatSessionProvider key={user.id} user={user}>
+        <ChatSessionContextProvider key={user.id} user={user}>
           <ChatPanel conversationId={DEMO_CONVERSATION_ID} />
-        </ChatSessionProvider>
+        </ChatSessionContextProvider>
       ))}
     </main>
   )

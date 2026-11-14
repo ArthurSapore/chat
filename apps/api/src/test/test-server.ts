@@ -2,6 +2,7 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
 } from "@workspace/contracts"
+import axios from "axios"
 import { createServer } from "node:http"
 import type { AddressInfo } from "node:net"
 import { io as ioClient, type Socket } from "socket.io-client"
@@ -30,6 +31,8 @@ export async function startTestServer() {
   const { port } = httpServer.address() as AddressInfo
   const url = `http://127.0.0.1:${port}`
   const clients: TestClient[] = []
+  // validateStatus: 4xx/5xx are responses under test, not exceptions.
+  const http = axios.create({ baseURL: url, validateStatus: () => true })
 
   /** Connects an authenticated client; rejects if the server refuses it. */
   function connect(token: string): Promise<TestClient> {
@@ -47,8 +50,8 @@ export async function startTestServer() {
     })
   }
 
-  function request(path: string, token?: string) {
-    return fetch(`${url}${path}`, {
+  function request<T = unknown>(path: string, token?: string) {
+    return http.get<T>(path, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
   }

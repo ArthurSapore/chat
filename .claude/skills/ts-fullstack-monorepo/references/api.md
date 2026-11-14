@@ -202,15 +202,17 @@ Express 5 propaga rejeições de handlers async para o error handler — sem `tr
 
 ```ts
 // src/modules/items/items.routes.ts
+import { ITEM_PATHS } from "@workspace/contracts"
 import { Router } from "express"
 import type { ItemsController } from "@/modules/items/items.controller"
 
+// Caminhos completos vêm do contracts (os mesmos que o front usa em ITEM_ROUTES).
 export class ItemsRoutes {
   readonly router = Router()
 
   constructor(private readonly controller: ItemsController) {
-    this.router.get("/:id", this.controller.getById)
-    this.router.post("/", this.controller.create)
+    this.router.get(ITEM_PATHS.item, this.controller.getById)
+    this.router.post(ITEM_PATHS.items, this.controller.create)
   }
 }
 ```
@@ -279,7 +281,7 @@ export class App {
     this.express.get("/health", (_req, res) => {
       res.json({ status: "ok" })
     })
-    this.express.use("/items", c.itemsRoutes.router)
+    this.express.use(c.itemsRoutes.router)
 
     this.express.use(c.errorHandler.handle)
   }

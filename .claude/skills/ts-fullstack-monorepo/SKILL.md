@@ -16,7 +16,7 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 | Linguagem | TypeScript strict, ESM (`"type": "module"`), `verbatimModuleSyntax`, `moduleResolution: "bundler"` |
 | API (`apps/api`) | Express 5, camadas **controller → service → repository**, injeção de dependência por construtor (composition root), Zod 4 (env e entrada), dotenv (`.env`), cors, jsonwebtoken, Socket.IO 4 quando houver tempo real; `tsx watch` (dev), `tsup` (build) |
 | Banco | PostgreSQL. ORM/query builder: use o que o projeto já tiver; se não houver, **pergunte ao usuário** antes de criar a persistência |
-| Web (`apps/web`) | React 19, Vite 8, **TanStack Router** (rotas por arquivo), **TanStack Query** (estado de servidor), **Zustand** (estado de cliente), **React Hook Form** + **Zod** (`@hookform/resolvers`), Tailwind v4, `@tabler/icons-react`, `socket.io-client` quando houver tempo real |
+| Web (`apps/web`) | React 19, Vite 8, **TanStack Router** (rotas por arquivo), **TanStack Query** (estado de servidor), **Zustand** (estado de cliente), **React Hook Form** + **Zod** (`@hookform/resolvers`), **axios** (requisições HTTP), Tailwind v4, `@tabler/icons-react`, `socket.io-client` quando houver tempo real |
 | UI (`packages/ui`) | shadcn (`style: base-maia`, `iconLibrary: tabler`, `rtl: true`), `@base-ui/react`, `class-variance-authority`, `cn`, `tw-animate-css`, fontes `@fontsource-variable/*` |
 | Contratos (`packages/contracts`) | DTOs, tipos HTTP, mapas de eventos e schemas Zod compartilhados, consumidos como fonte `.ts` |
 | Infra | **Dockerfile por app** + **docker-compose.yml** na raiz (postgres, api, web) |
@@ -54,7 +54,7 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 │     │  ├─ feature/<feature>/
 │     │  │  ├─ components/         # componentes da feature
 │     │  │  ├─ hooks/              # query-options.ts, mutation-options.ts
-│     │  │  ├─ service/            # routes.ts (endpoints), requests.ts (chamadas HTTP)
+│     │  │  ├─ service/            # requests.ts: <acao>Request(dto) → http.request(<DOMINIO>_ROUTES.<acao>(dto))
 │     │  │  ├─ context/            # contextos React só da feature
 │     │  │  ├─ utils/              # utilitários só da feature
 │     │  │  ├─ constants.ts        # query/mutation keys e constantes
@@ -63,8 +63,8 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 │     │  ├─ context/               # contextos React gerais (<nome>-context.tsx)
 │     │  ├─ stores/                # stores Zustand
 │     │  ├─ utils/                 # utilitários globais do web (<assunto>-utils.ts)
-│     │  ├─ lib/{api-client.ts, query-client.ts}
-│     │  ├─ config/                # env do front, socket
+│     │  ├─ lib/query-client.ts
+│     │  ├─ config/                # http.ts (instância axios + interceptors), socket
 │     │  ├─ components/            # componentes compostos da aplicação (layout, grids, header…)
 │     │  ├─ hooks/                 # hooks globais do web
 │     ├─ Dockerfile  nginx.conf
@@ -104,16 +104,20 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
      inline (`map`/`filter`, updater do `setState`, seletores e `create((set) => ...)` do Zustand,
      `.catch(() => null)`). Nada de classes no front (exceto subclasses de `Error`).
    - `packages/*` (consumidos pelo front) seguem o estilo do front: funções.
-7. **Tipos e schemas compartilhados em `packages/contracts`** (DTOs, payloads, schemas Zod de
-   entrada). API e web nunca duplicam.
+7. **Tipos, schemas e rotas compartilhados em `packages/contracts`** (DTOs, payloads, schemas
+   Zod de entrada e as rotas HTTP). API e web nunca duplicam. Por domínio: `<DOMINIO>_PATHS`
+   (padrões Express, usados pela api para registrar as rotas) e `<DOMINIO>_ROUTES` (funções
+   `<acao>(dto)` que devolvem `{ method, url, params?, data? }`, usadas pelo front em
+   `http.request()`).
 8. **Front: estado no lugar certo** — dados do servidor no **TanStack Query**; estado de UI/
    cliente global no **Zustand**; estado de formulário no **React Hook Form** com `zodResolver`;
    estado de navegação (params, search) no **TanStack Router**; estado compartilhado por uma
-   subárvore de componentes num **Context** (`<nome>-context.tsx`: `<Nome>ContextProvider` +
-   `use<Nome>Context`; geral em `src/context/`, de feature em `feature/<feature>/context/`).
+   subárvore de componentes num **Context** (um único arquivo `<nome>-context.tsx` com o
+   contexto, o `<Nome>ContextProvider` e o `use<Nome>Context` — nunca um `-provider.tsx`
+   separado; geral em `src/context/`, de feature em `feature/<feature>/context/`).
    Não copie dados do Query para o Zustand nem para contextos.
 9. **Front organizado por feature** em `src/feature/<feature>/` sempre com a mesma forma:
-   `components/`, `hooks/{query-options,mutation-options}.ts`, `service/{routes,requests}.ts`,
+   `components/`, `hooks/{query-options,mutation-options}.ts`, `service/requests.ts`,
    `constants.ts`, `schemas.ts`, `types.ts`. `hooks/` exporta *options* do TanStack Query
    (`queryOptions`/`mutationOptions`), keys só em `constants.ts`, `service/` sem React.
    Detalhes em [references/web-ui.md](references/web-ui.md#organização-por-feature).
@@ -145,6 +149,13 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 17. **Testes sempre com Vitest** (api, web e pacotes) — nunca Jest ou outro runner. Arquivos
     `*.test.ts(x)` ao lado do código; na api, dublês injetados pelo construtor; no front,
     Testing Library + jsdom. Detalhes em [references/testing.md](references/testing.md).
+18. **Requisições HTTP sempre com axios** — nunca `fetch` nem outra biblioteca. No front, uma
+    instância única `http` em `src/config/http.ts` (`axios.create` com `baseURL`/`withCredentials`
+    e interceptor de resposta que trata erros globalmente: notifica o usuário e, em 401, faz
+    logout). Em `feature/<feature>/service/requests.ts`, cada função `<acao>Request(dto)` faz só
+    `return http.request(<DOMINIO>_ROUTES.<acao>(dto))` — as rotas vêm do contracts. Na api, chamadas a serviços externos e testes de integração também usam axios (nos
+    testes, `validateStatus: () => true` para inspecionar respostas 4xx/5xx). Detalhes em
+    [references/web-ui.md](references/web-ui.md#cliente-http).
 
 ## Comandos
 
@@ -182,7 +193,8 @@ docker compose up --build                  # stack completa
 - [ ] Estilo: classes na api; `function` (sem arrow sempre que possível) no web.
 - [ ] ORM: usado o já existente ou o escolhido pelo usuário (nunca escolhido sem perguntar).
 - [ ] Dados do servidor via TanStack Query (keys em `constants.ts`), formulários com RHF + Zod.
-- [ ] Contextos em `context/<nome>-context.tsx` (geral em `src/context`, de feature em `feature/<feature>/context`), com Provider + hook `use<Nome>Context` que lança erro fora do provider.
+- [ ] Contextos em `context/<nome>-context.tsx` (geral em `src/context`, de feature em `feature/<feature>/context`), com contexto, Provider e hook `use<Nome>Context` (que lança erro fora do provider) **no mesmo arquivo** — nunca um `-provider.tsx` separado.
 - [ ] Testes com **Vitest** (`*.test.ts(x)` ao lado do arquivo) para services, utilitários, schemas e componentes novos.
 - [ ] Funções, variáveis e textos de `describe`/`it` em inglês.
+- [ ] Requisições HTTP com axios: `http` de `config/http.ts` + `<acao>Request(dto)` em `service/requests.ts` chamando `http.request(<DOMINIO>_ROUTES.<acao>(dto))`; rotas no contracts; nunca `fetch`.
 - [ ] `pnpm typecheck`, `pnpm lint` e `pnpm test` passam; arquivos formatados com Prettier.

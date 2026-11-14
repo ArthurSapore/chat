@@ -1,5 +1,5 @@
 import {
-  apiRoutes,
+  MESSAGE_PATHS,
   idSchema,
   messagesQuerySchema,
   type MessagePage,
@@ -14,7 +14,7 @@ export function createMessageRoutes(messageService: MessageService) {
 
   // GET /conversations/:conversationId/messages?before|after|around=<id>&limit=
   router.get(
-    apiRoutes.conversationMessages.pattern,
+    MESSAGE_PATHS.conversationMessages,
     async (req, res: Response<MessagePage>) => {
       // ZodError aqui vira 400 no error handler.
       const conversationId = idSchema.parse(req.params.conversationId)

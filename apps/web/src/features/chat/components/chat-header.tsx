@@ -1,6 +1,6 @@
 import { ConnectionStatusBadge } from "@/features/chat/components/connection-status-badge"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
-import type { ConnectionStatus } from "@/features/chat/session/chat-session-context"
+import type { ConnectionStatus } from "@/features/chat/context/chat-session-context"
 
 interface ChatHeaderProps {
   /** Usuário dono desta sessão. */

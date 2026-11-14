@@ -1,6 +1,6 @@
 import { cn } from "@workspace/ui/lib/utils"
 
-import type { ConnectionStatus } from "@/features/chat/session/chat-session-context"
+import type { ConnectionStatus } from "@/features/chat/context/chat-session-context"
 
 const labels: Record<ConnectionStatus, string> = {
   connecting: "Conectando…",

@@ -16,19 +16,13 @@ afterEach(async () => {
 })
 
 async function getPage(path: string) {
-  const response = await server.request(path, TOKENS.ana)
-  return {
-    status: response.status,
-    body: (await response.json()) as MessagePage,
-  }
+  const response = await server.request<MessagePage>(path, TOKENS.ana)
+  return { status: response.status, body: response.data }
 }
 
 async function getError(path: string, token?: string) {
-  const response = await server.request(path, token)
-  return {
-    status: response.status,
-    body: (await response.json()) as ApiErrorBody,
-  }
+  const response = await server.request<ApiErrorBody>(path, token)
+  return { status: response.status, body: response.data }
 }
 
 describe("GET /health", () => {
@@ -36,7 +30,7 @@ describe("GET /health", () => {
     const response = await server.request("/health")
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({ status: "ok" })
+    expect(response.data).toEqual({ status: "ok" })
   })
 })
 
@@ -105,7 +99,10 @@ describe("GET /conversations/:conversationId/messages", () => {
 
 describe("unknown routes", () => {
   it("respond 404 in the standard error format", async () => {
-    const { status, body } = await getError("/route-that-does-not-exist", TOKENS.ana)
+    const { status, body } = await getError(
+      "/route-that-does-not-exist",
+      TOKENS.ana
+    )
 
     expect(status).toBe(404)
     expect(body.error).toMatchObject({ code: "NOT_FOUND" })

@@ -130,8 +130,11 @@ O que testar no front:
 - **Utilitários e schemas Zod**: testes unitários puros.
 - **Componentes/formulários**: comportamento via Testing Library (`screen.getByRole`,
   `userEvent`), nunca detalhes de implementação.
-- **Requests**: mocke a camada `service/requests.ts` da feature com `vi.mock` ou
-  `vi.spyOn(globalThis, "fetch")`; não bata na API real.
+- **Requests**: mocke a camada `service/requests.ts` da feature com `vi.mock`, ou espione a
+  instância axios (`vi.spyOn(http, "request").mockResolvedValue({ data })`); não bata na API real.
+- **Rotas do contracts**: teste puro de `<DOMINIO>_ROUTES.<acao>(dto)` → `{ method, url, params, data }`.
+- **Integração na api**: chame o servidor de teste com axios
+  (`axios.create({ baseURL, validateStatus: () => true })`) e verifique `status` e `data`.
 - **Contextos**: renderize o `<Nome>ContextProvider` e verifique que `use<Nome>Context` lança
   erro fora dele.
 - **Stores Zustand**: teste as ações chamando `useXStore.getState()` e resetando o estado no `beforeEach`.

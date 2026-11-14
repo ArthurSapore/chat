@@ -127,22 +127,19 @@ describe("MessageService", () => {
         "belongs to another conversation",
         makeMessage({ id: "orig", conversationId: "conv-2" }),
       ],
-    ])(
-      "throws NOT_FOUND when the replied message %s",
-      async (_, original) => {
-        const { sut, messages } = makeSut()
-        messages.findById.mockResolvedValue(original)
+    ])("throws NOT_FOUND when the replied message %s", async (_, original) => {
+      const { sut, messages } = makeSut()
+      messages.findById.mockResolvedValue(original)
 
-        await expect(
-          sut.send("user-a", {
-            conversationId: "conv-1",
-            content: "Resposta",
-            replyToId: "orig",
-          })
-        ).rejects.toMatchObject({ code: "NOT_FOUND" })
-        expect(messages.create).not.toHaveBeenCalled()
-      }
-    )
+      await expect(
+        sut.send("user-a", {
+          conversationId: "conv-1",
+          content: "Resposta",
+          replyToId: "orig",
+        })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" })
+      expect(messages.create).not.toHaveBeenCalled()
+    })
   })
 
   describe("edit", () => {

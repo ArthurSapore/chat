@@ -112,8 +112,7 @@ src/
         query-options.ts         # queryOptions(...) da feature
         mutation-options.ts      # mutationOptions(...) da feature
       service/
-        routes.ts                # caminhos/endpoints da API usados pela feature
-        requests.ts              # funções que chamam a API (usam lib/api-client + routes)
+        requests.ts              # <acao>Request(dto) → http.request(<DOMINIO>_ROUTES.<acao>(dto))
       context/                   # contextos React só desta feature (<nome>-context.tsx)
       utils/                     # utilitários só desta feature (<assunto>-utils.ts)
       constants.ts               # query keys, mutation keys, valores fixos da feature
@@ -122,13 +121,14 @@ src/
   context/                       # contextos React gerais da aplicação (<nome>-context.tsx)
   stores/                        # stores Zustand (globais ou por feature)
   utils/                         # utilitários globais do web (date-utils.ts, string-utils.ts…)
-  lib/{api-client.ts, query-client.ts}   # clientes configurados (com efeito), não utilitários
-  config/env.ts                  # import.meta.env validado com Zod
+  lib/query-client.ts            # clientes configurados (com efeito), não utilitários
+  config/http.ts                 # API_URL + instância axios `http` com interceptors
 ```
 
 Regras da feature:
 - Pasta `feature/` no singular; cada feature em kebab-case (`auth`, `user-profile`).
-- `service/` não conhece React: só `routes.ts` (strings/funções de URL) e `requests.ts` (fetch tipado).
+- `service/` não conhece React: só `requests.ts`. As rotas **não** ficam na feature — vêm de
+  `<DOMINIO>_ROUTES` em `packages/contracts`, compartilhadas com a api.
 - `hooks/` contém **options** do TanStack Query, não hooks com `useQuery` dentro — os
   componentes e rotas chamam `useQuery(xQueryOptions())` / `useMutation(xMutationOptions())`.
 - Query/mutation keys ficam em `constants.ts`, nunca como string solta nos hooks.
@@ -138,86 +138,155 @@ Regras da feature:
 - Utilitários: `feature/<feature>/utils/` se só a feature usa; `src/utils/` se vários pontos do
   web usam; `packages/utils` se a api também usa (ver [workspace.md](workspace.md#utilitários)).
 
-### Env do front
-
-```ts
-// src/config/env.ts
-import { z } from "zod"
-
-export const env = z
-  .object({ VITE_API_URL: z.url() })
-  .parse(import.meta.env)
-```
-
 ### Cliente HTTP
 
-```ts
-// src/lib/api-client.ts
-import type { ApiErrorBody } from "@workspace/contracts"
-import { env } from "@/config/env"
+**Sempre axios** — nunca `fetch`. A arquitetura tem três peças:
 
-export class ApiError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message)
+1. **`src/config/http.ts`** — `API_URL` e a instância única `http` (`axios.create`) com o
+   interceptor de resposta que trata erros **globalmente**. Nenhum outro arquivo chama
+   `axios.get/post` direto nem cria instâncias.
+2. **Rotas em `packages/contracts`** — `<DOMINIO>_ROUTES.<acao>(dto)` devolve a config da
+   requisição (`{ method, url, params?, data? }`), sem depender do axios.
+3. **`feature/<feature>/service/requests.ts`** — uma função `<acao>Request(dto)` por chamada,
+   que só faz `return http.request(<DOMINIO>_ROUTES.<acao>(dto))`.
+
+```ts
+// src/config/http.ts
+import axios, { HttpStatusCode } from "axios"
+import type { ApiErrorBody } from "@workspace/contracts"
+import { notifyError } from "@/components/notify"
+import { useUserStore } from "@/stores/user-store"
+
+export const API_URL = import.meta.env.VITE_API_URL as string
+
+export const http = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+})
+
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (!axios.isAxiosError<ApiErrorBody>(error)) return Promise.reject(error)
+
+    const status = error.response?.status
+    const apiError = error.response?.data?.error
+
+    // 401: avisa e encerra a sessão local
+    if (status === HttpStatusCode.Unauthorized) {
+      notifyError({
+        title: "Error",
+        description: apiError?.message ?? "Unauthorized",
+      })
+      const state = useUserStore.getState()
+      if (state.user) state.logoutUser()
+      return Promise.reject(error)
+    }
+
+    // 4xx/5xx: notificação global com a mensagem da API
+    if (
+      status &&
+      status >= HttpStatusCode.BadRequest &&
+      status <= HttpStatusCode.InternalServerError
+    ) {
+      notifyError({
+        title: apiError?.code ?? "Error",
+        description: apiError?.message ?? "Something went wrong",
+      })
+    }
+
+    return Promise.reject(error)
   }
+)
+```
+
+```ts
+// packages/contracts/src/routes.ts (base, uma vez)
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+
+export interface HttpRequestConfig {
+  method: HttpMethod
+  url: string
+  params?: object // query string
+  data?: unknown // corpo JSON
 }
 
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${env.VITE_API_URL}${path}`, {
-    credentials: "include",
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+export function buildPath(pattern: string, params: Record<string, string>) {
+  return pattern.replace(/:(\w+)/g, function replaceParam(_, name: string) {
+    return encodeURIComponent(params[name] ?? "")
   })
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as ApiErrorBody | null
-    throw new ApiError(res.status, body?.message ?? res.statusText)
-  }
-  return res.status === 204 ? (undefined as T) : ((await res.json()) as T)
 }
 ```
+
+Regras:
+- `requests.ts` não monta URL, método nem corpo — isso é do contracts. A função só escolhe a
+  rota e repassa o DTO; o tipo da resposta vai no genérico: `http.request<UserDto>(...)`.
+- Os requests devolvem a `AxiosResponse`; quem consome (query/mutation options) lê `.data`.
+- Nome: `<acao>Request` (`createNewOrganizationRequest`), DTO `<Acao>Request` no contracts.
+- Erros de API são tratados no interceptor (notificação global); componentes só tratam o que
+  for específico da tela. Cancelamento via `signal`: `http.request({ ...ROUTE, signal })`.
+- Autenticação por cookie (`withCredentials`). Se a tela precisar de outro cabeçalho por
+  chamada (ex.: várias sessões na mesma página), espalhe a rota e acrescente:
+  `http.request({ ...ROUTES.x(dto), headers })`.
 
 ### Exemplo completo de feature (`src/feature/auth`)
 
 ```ts
-// service/routes.ts
-export const authRoutes = {
+// packages/contracts/src/auth/routes.ts — rotas do domínio, compartilhadas com a api
+import { type HttpRequestConfig } from "../routes"
+import type { LoginRequest, SignupRequest } from "./schemas"
+
+/** Padrões Express: a api registra as rotas com eles. */
+export const AUTH_PATHS = {
   login: "/auth/login",
   signup: "/auth/signup",
   logout: "/auth/logout",
   me: "/auth/me",
 } as const
+
+/** Configs de requisição: o front usa em http.request(). */
+export const AUTH_ROUTES = {
+  login(dto: LoginRequest): HttpRequestConfig {
+    return { method: "POST", url: AUTH_PATHS.login, data: dto }
+  },
+  signup(dto: SignupRequest): HttpRequestConfig {
+    return { method: "POST", url: AUTH_PATHS.signup, data: dto }
+  },
+  logout(): HttpRequestConfig {
+    return { method: "POST", url: AUTH_PATHS.logout }
+  },
+  me(): HttpRequestConfig {
+    return { method: "GET", url: AUTH_PATHS.me }
+  },
+} as const
 ```
 
 ```ts
 // service/requests.ts
-import type { LoginInput, SignupInput, UserDto } from "@/feature/auth/types"
-import { authRoutes } from "@/feature/auth/service/routes"
-import { api } from "@/lib/api-client"
+import {
+  AUTH_ROUTES,
+  type LoginRequest,
+  type SignupRequest,
+  type UserDto,
+} from "@workspace/contracts"
+import { http } from "@/config/http"
 
-export function login(input: LoginInput) {
-  return api<UserDto>(authRoutes.login, {
-    method: "POST",
-    body: JSON.stringify(input),
-  })
+export async function loginRequest(dto: LoginRequest) {
+  return http.request<UserDto>(AUTH_ROUTES.login(dto))
 }
 
-export function signup(input: SignupInput) {
-  return api<UserDto>(authRoutes.signup, {
-    method: "POST",
-    body: JSON.stringify(input),
-  })
+export async function signupRequest(dto: SignupRequest) {
+  return http.request<UserDto>(AUTH_ROUTES.signup(dto))
 }
 
-export function logout() {
-  return api<void>(authRoutes.logout, { method: "POST" })
+export async function logoutRequest() {
+  return http.request<void>(AUTH_ROUTES.logout())
 }
 
-export function me() {
-  return api<UserDto>(authRoutes.me)
+export async function meRequest() {
+  return http.request<UserDto>(AUTH_ROUTES.me())
 }
 ```
-
-Consumido como namespace: `import * as authRequests from "@/feature/auth/service/requests"`.
 
 ```ts
 // constants.ts
@@ -283,12 +352,15 @@ export const queryClient = new QueryClient({
 // src/feature/auth/hooks/query-options.ts
 import { queryOptions } from "@tanstack/react-query"
 import { authKeys } from "@/feature/auth/constants"
-import * as authRequests from "@/feature/auth/service/requests"
+import { meRequest } from "@/feature/auth/service/requests"
 
 export function meQueryOptions() {
   return queryOptions({
     queryKey: authKeys.me(),
-    queryFn: authRequests.me,
+    async queryFn() {
+      const { data } = await meRequest()
+      return data
+    },
     staleTime: 5 * 60_000,
   })
 }
@@ -298,12 +370,20 @@ export function meQueryOptions() {
 // src/feature/auth/hooks/mutation-options.ts
 import { mutationOptions, type QueryClient } from "@tanstack/react-query"
 import { authKeys, authMutationKeys } from "@/feature/auth/constants"
-import * as authRequests from "@/feature/auth/service/requests"
+import type { LoginRequest, SignupRequest } from "@workspace/contracts"
+import {
+  loginRequest,
+  logoutRequest,
+  signupRequest,
+} from "@/feature/auth/service/requests"
 
 export function loginMutationOptions(queryClient: QueryClient) {
   return mutationOptions({
     mutationKey: authMutationKeys.login,
-    mutationFn: authRequests.login,
+    async mutationFn(dto: LoginRequest) {
+      const { data } = await loginRequest(dto)
+      return data
+    },
     onSuccess(user) {
       queryClient.setQueryData(authKeys.me(), user)
     },
@@ -313,7 +393,10 @@ export function loginMutationOptions(queryClient: QueryClient) {
 export function signupMutationOptions(queryClient: QueryClient) {
   return mutationOptions({
     mutationKey: authMutationKeys.signup,
-    mutationFn: authRequests.signup,
+    async mutationFn(dto: SignupRequest) {
+      const { data } = await signupRequest(dto)
+      return data
+    },
     onSuccess(user) {
       queryClient.setQueryData(authKeys.me(), user)
     },
@@ -323,7 +406,7 @@ export function signupMutationOptions(queryClient: QueryClient) {
 export function logoutMutationOptions(queryClient: QueryClient) {
   return mutationOptions({
     mutationKey: authMutationKeys.logout,
-    mutationFn: authRequests.logout,
+    mutationFn: logoutRequest,
     onSuccess() {
       queryClient.removeQueries({ queryKey: authKeys.all })
     },
@@ -483,8 +566,12 @@ export function useSelectedDayContext(): SelectedDayContextValues {
 ```
 
 Regras:
-- Arquivo `<nome>-context.tsx`; exports `<Nome>ContextProvider` e `use<Nome>Context`. O objeto
-  do contexto **não** é exportado — o consumo é sempre pelo hook.
+- **Contexto, provider e hook sempre no mesmo arquivo**, com sufixo `-context`:
+  `<nome>-context.tsx`. Nunca separe em `<nome>-provider.tsx`, `<nome>-context.ts` +
+  `<nome>-provider.tsx` ou similares. Tipos ligados ao contexto (ex.: um union de status) também
+  ficam nesse arquivo e podem ser exportados.
+- Exports `<Nome>ContextProvider` e `use<Nome>Context`. O objeto do contexto **não** é
+  exportado — o consumo é sempre pelo hook.
 - Interfaces `<Nome>ContextProps extends PropsWithChildren` e
   `<Nome>ContextValues extends Omit<<Nome>ContextProps, "children">` + estado/ações.
 - `createContext<Values | null>(null)` e o hook lança erro com a mensagem

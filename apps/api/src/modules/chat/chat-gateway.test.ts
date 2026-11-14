@@ -47,9 +47,7 @@ async function send(client: TestClient, content: string) {
 describe("ChatGateway", () => {
   describe("authentication", () => {
     it("rejects the connection without a valid token", async () => {
-      await expect(server.connect("fake-token")).rejects.toThrow(
-        "Unauthorized"
-      )
+      await expect(server.connect("fake-token")).rejects.toThrow("Unauthorized")
     })
   })
 

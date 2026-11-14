@@ -12,9 +12,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@workspace/contracts": "workspace:*",
     "@tabler/icons-react": "^3.51.0",
+    "@workspace/contracts": "workspace:*",
     "@workspace/ui": "workspace:*",
+    "axios": "^1.21.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "socket.io-client": "^4.8.4"
