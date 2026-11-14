@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@/modules/chat/types.js";
+import type { ChatMessage } from "@workspace/contracts";
 import { randomUUID } from "node:crypto";
 
 

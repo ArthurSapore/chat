@@ -1,5 +1,6 @@
+import type { ClientToServerEvents, ServerToClientEvents } from "@workspace/contracts";
 import { Socket } from "socket.io";
-import type { ClientToServerEvents, InterServerEvents, ServerToClientEvents, SocketData } from "../modules/chat/types.js";
+import type { InterServerEvents, SocketData } from "../modules/chat/types";
 
 type ChatSocket = Socket<
   ClientToServerEvents,

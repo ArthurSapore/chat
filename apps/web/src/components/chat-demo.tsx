@@ -44,7 +44,6 @@ import {
   type Page,
   type Reaction,
 } from "@/lib/fake-chat-api"
-import { socket } from "@/services/socket"
 
 /** Quantas mensagens cada requisição traz. */
 const PAGE_SIZE = 40
@@ -685,15 +684,6 @@ function ChatRoom({
               size="icon"
               disabled={!draft.trim() || isStreaming}
               aria-label="Enviar"
-              onClick={() => {
-                socket.emit(
-                  "conversation:join",
-                  { conversationId: "conversation-123" },
-                  (response: unknown) => {
-                    console.log(response)
-                  }
-                )
-              }}
             >
               <IconArrowUp />
             </Button>

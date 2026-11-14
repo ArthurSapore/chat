@@ -2,15 +2,14 @@ import { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 
 import type {
-    ClientToServerEvents,
-    InterServerEvents,
-    ServerToClientEvents,
-    SocketData,
-} from "@/modules/chat/types.js";
+  InterServerEvents,
+  SocketData,
+} from "@/modules/chat/types";
 
-import { env } from "@/config/env.js";
-import { ChatGateway } from "@/modules/chat/chat-gateway.js";
-import { socketAuthMiddleware } from "@/socket/socket-middleware.js";
+import { env } from "@/config/env";
+import { ChatGateway } from "@/modules/chat/chat-gateway";
+import { socketAuthMiddleware } from "@/socket/socket-middleware";
+import type { ClientToServerEvents, ServerToClientEvents } from "@workspace/contracts";
 
 export let io: Server<
   ClientToServerEvents,
@@ -40,6 +39,10 @@ export function initializeSocket(httpServer: HttpServer) {
     socket.on("disconnect", (reason) => {
       console.log(`User disconnected: ${reason}`);
     });
+  });
+
+  io.engine.on("connection_error", (err) => {
+    console.error("Socket connection error:", err.code, err.message, err.context);
   });
 
   return io;

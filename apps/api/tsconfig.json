@@ -6,14 +6,12 @@
     "target": "ES2023",
     "lib": ["ES2023"],
 
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "types": ["node"],
 
-    "rootDir": "./src",
-    "outDir": "./dist",
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["./src/*"]
     },
 
     "skipLibCheck": true,
@@ -23,15 +21,11 @@
 
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": false,
     "noFallthroughCasesInSwitch": true,
 
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-
-    "sourceMap": true,
-    "declaration": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "tsup.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

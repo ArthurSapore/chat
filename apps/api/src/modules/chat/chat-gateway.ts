@@ -1,7 +1,8 @@
 import { Server, Socket } from "socket.io";
 
-import { ChatService } from "@/modules/chat/chat-service.js";
-import type { ClientToServerEvents, InterServerEvents, ServerToClientEvents, SocketData } from "@/modules/chat/types.js";
+import { ChatService } from "@/modules/chat/chat-service";
+import type { InterServerEvents, SocketData } from "@/modules/chat/types";
+import type { ClientToServerEvents, ServerToClientEvents } from "@workspace/contracts";
 
 type ChatServer = Server<
   ClientToServerEvents,
@@ -48,6 +49,8 @@ export class ChatGateway {
       "message:send",
       async ({ conversationId, content }, callback) => {
         try {
+          console.log(content)
+
           if (!content.trim()) {
             return callback({
               success: false,
@@ -69,7 +72,7 @@ export class ChatGateway {
             success: true,
             messageId: message.id,
           });
-        } catch {
+        } catch(e) {
           callback({
             success: false,
             error: "Could not send message",
@@ -81,6 +84,7 @@ export class ChatGateway {
 
   private handleTyping() {
     this.socket.on("typing:start", ({ conversationId }) => {
+      console.log('typing')
       this.socket.to(conversationId).emit("user:typing", {
         userId: this.socket.data.userId,
         conversationId,
@@ -88,6 +92,8 @@ export class ChatGateway {
     });
 
     this.socket.on("typing:stop", ({ conversationId }) => {
+      console.log('stoppedTyping')
+      
       this.socket.to(conversationId).emit("user:stopped_typing", {
         userId: this.socket.data.userId,
         conversationId,
