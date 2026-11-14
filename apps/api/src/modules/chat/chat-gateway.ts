@@ -1,103 +1,90 @@
-import { Server, Socket } from "socket.io";
+import { conversationRefSchema, sendMessageSchema } from "@workspace/contracts"
 
-import { ChatService } from "@/modules/chat/chat-service";
-import type { InterServerEvents, SocketData } from "@/modules/chat/types";
-import type { ClientToServerEvents, ServerToClientEvents } from "@workspace/contracts";
+import type { ConversationService } from "@/modules/conversations/conversation-service"
+import type { MessageService } from "@/modules/messages/message-service"
+import { withAck, withValidation } from "@/socket/handlers"
+import { conversationIdFromRoom, conversationRoom } from "@/socket/rooms"
+import type { ChatServer, ChatSocket } from "@/socket/types"
 
-type ChatServer = Server<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->;
-
-type ChatSocket = Socket<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->;
-
+/**
+ * Camada de transporte do chat: traduz eventos do socket em chamadas aos
+ * services e faz o broadcast. Regra de negócio fica nos services.
+ */
 export class ChatGateway {
-  private chatService = new ChatService();
-
   constructor(
-    private io: ChatServer,
-    private socket: ChatSocket,
+    private readonly io: ChatServer,
+    private readonly conversationService: ConversationService,
+    private readonly messageService: MessageService
   ) {}
 
-  registerListeners() {
-    this.handleJoinConversation();
-    this.handleSendMessage();
-    this.handleTyping();
-  }
+  register(socket: ChatSocket) {
+    const { userId } = socket.data
 
-  private handleJoinConversation() {
-    this.socket.on("conversation:join", async ({ conversationId }, callback) => {
-      // IMPORTANTE:
-      // Validar se o usuário pertence à conversa
-      // antes de permitir que ele entre na sala.
+    socket.on(
+      "conversation:join",
+      withAck(conversationRefSchema, async ({ conversationId }) => {
+        await this.conversationService.assertMember(conversationId, userId)
+        await socket.join(conversationRoom(conversationId))
+        return { conversationId }
+      })
+    )
 
-      await this.socket.join(conversationId);
+    socket.on(
+      "conversation:leave",
+      withAck(conversationRefSchema, async ({ conversationId }) => {
+        this.emitStoppedTyping(socket, conversationId)
+        await socket.leave(conversationRoom(conversationId))
+        return { conversationId }
+      })
+    )
 
-      callback({ success: true });
-    });
-  }
-
-  private handleSendMessage() {
-    this.socket.on(
+    socket.on(
       "message:send",
-      async ({ conversationId, content }, callback) => {
-        try {
-          console.log(content)
+      withAck(sendMessageSchema, async (input) => {
+        const message = await this.messageService.send(userId, input)
 
-          if (!content.trim()) {
-            return callback({
-              success: false,
-              error: "Message cannot be empty",
-            });
-          }
+        // Inclui o próprio remetente: outras abas dele também recebem.
+        this.io
+          .to(conversationRoom(message.conversationId))
+          .emit("message:new", message)
 
-          const message = await this.chatService.sendMessage(
-            conversationId,
-            this.socket.data.userId,
-            content,
-          );
+        return message
+      })
+    )
 
-          this.io
-            .to(conversationId)
-            .emit("message:new", message);
+    // Typing é efêmero e frequente: em vez de consultar o banco, só repassa
+    // se o socket já entrou na sala (o join já validou a participação).
+    socket.on(
+      "typing:start",
+      withValidation(conversationRefSchema, ({ conversationId }) => {
+        const room = conversationRoom(conversationId)
+        if (!socket.rooms.has(room)) return
+        socket.to(room).emit("user:typing", { userId, conversationId })
+      })
+    )
 
-          callback({
-            success: true,
-            messageId: message.id,
-          });
-        } catch(e) {
-          callback({
-            success: false,
-            error: "Could not send message",
-          });
-        }
-      },
-    );
+    socket.on(
+      "typing:stop",
+      withValidation(conversationRefSchema, ({ conversationId }) => {
+        this.emitStoppedTyping(socket, conversationId)
+      })
+    )
+
+    // "disconnecting" ainda tem acesso às salas (em "disconnect" já saiu).
+    socket.on("disconnecting", () => {
+      for (const room of socket.rooms) {
+        const conversationId = conversationIdFromRoom(room)
+        if (conversationId) this.emitStoppedTyping(socket, conversationId)
+      }
+    })
   }
 
-  private handleTyping() {
-    this.socket.on("typing:start", ({ conversationId }) => {
-      console.log('typing')
-      this.socket.to(conversationId).emit("user:typing", {
-        userId: this.socket.data.userId,
-        conversationId,
-      });
-    });
-
-    this.socket.on("typing:stop", ({ conversationId }) => {
-      console.log('stoppedTyping')
-      
-      this.socket.to(conversationId).emit("user:stopped_typing", {
-        userId: this.socket.data.userId,
-        conversationId,
-      });
-    });
+  private emitStoppedTyping(socket: ChatSocket, conversationId: string) {
+    const room = conversationRoom(conversationId)
+    if (!socket.rooms.has(room)) return
+    socket.to(room).emit("user:stopped_typing", {
+      userId: socket.data.userId,
+      conversationId,
+    })
   }
 }

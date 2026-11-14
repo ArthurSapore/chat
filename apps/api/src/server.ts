@@ -1,28 +1,29 @@
-import { app } from "@/app";
-import { env } from "@/config/env";
-import { initializeSocket } from "@/socket/socket-server";
-import { createServer } from "node:http";
+import { createServer } from "node:http"
 
-const port = env.PORT
+import { createApp } from "@/app"
+import { env } from "@/config/env"
+import { createContainer } from "@/container"
+import { createSocketServer } from "@/socket/socket-server"
 
-const httpServer = createServer(app);
+const container = createContainer()
+const httpServer = createServer(createApp(container))
 
 try {
-  initializeSocket(httpServer);
+  createSocketServer(httpServer, container)
 } catch (error) {
-  console.error("Failed to initialize socket server:", error);
-  process.exit(1);
+  console.error("Falha ao iniciar o servidor de socket:", error)
+  process.exit(1)
 }
 
 httpServer.on("error", (error: NodeJS.ErrnoException) => {
   if (error.code === "EADDRINUSE") {
-    console.error(`Port ${port} is already in use`);
+    console.error(`A porta ${env.PORT} já está em uso`)
   } else {
-    console.error("HTTP server error:", error);
+    console.error("Erro no servidor HTTP:", error)
   }
-  process.exit(1);
-});
+  process.exit(1)
+})
 
-httpServer.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+httpServer.listen(env.PORT, () => {
+  console.log(`Servidor rodando na porta ${env.PORT}`)
+})

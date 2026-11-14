@@ -1,13 +1,31 @@
-import express, { type Express, type Request } from "express";
+import { apiRoutes } from "@workspace/contracts"
+import cors from "cors"
+import express, { type Express } from "express"
 
-export const app: Express = express();
+import { env } from "@/config/env"
+import type { Container } from "@/container"
+import { requireAuth } from "@/http/middlewares/auth"
+import { errorHandler, notFoundHandler } from "@/http/middlewares/error-handler"
+import { createMessageRoutes } from "@/modules/messages/message-routes"
 
-app.use(express.json());
+export function createApp(container: Container): Express {
+  const app = express()
 
-app.get('/', (_: Request, res) => {
-  res.send('Hello World!');
-});
+  app.use(cors({ origin: env.UI_URL, credentials: true }))
+  app.use(express.json())
 
-app.get("/health", (_, res) => {
-  res.json({ status: "ok" });
-});
+  // Rotas públicas
+  app.get(apiRoutes.health, (_req, res) => {
+    res.json({ status: "ok" })
+  })
+
+  // Rotas autenticadas
+  app.use(requireAuth(container.authService))
+  app.use(createMessageRoutes(container.messageService))
+
+  // Express 5 já encaminha erros de handlers async para cá.
+  app.use(notFoundHandler)
+  app.use(errorHandler)
+
+  return app
+}

@@ -1,78 +1,22 @@
-import { ChatTypingIndicator } from "@/components/chat-typing-indicator"
-import { useTypingIndicator } from "@/hooks/use-typing-indicator"
-import { useTypingUsers } from "@/hooks/use-typing-users"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { useEffect, useState } from "react"
-import { socket } from "./config/socket"
+import { DEV_USERS } from "@/config/dev-users"
+import { ChatPanel } from "@/features/chat/components/chat-panel"
+import { ChatSessionProvider } from "@/features/chat/session/chat-session-provider"
 
-const conversationId = "conversation-123"
+// Enquanto não há lista de conversas, usa a conversa de demonstração da API.
+const DEMO_CONVERSATION_ID = "conversation-123"
 
+/**
+ * Um chat por usuário de desenvolvimento, lado a lado: cada um com a própria
+ * sessão (token + socket), conversando entre si em tempo real.
+ */
 export function App() {
-  const [message, setMessage] = useState("")
-  const { notifyTyping, stopTyping } = useTypingIndicator(
-    socket,
-    conversationId
-  )
-  const typingUserIds = useTypingUsers(socket, conversationId)
-
-  useEffect(() => {
-    socket.connect()
-    socket.emit(
-      "conversation:join",
-      { conversationId },
-      (response: unknown) => {
-        console.log(response)
-      }
-    )
-  }, [])
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setMessage(e.target.value)
-
-    if (e.target.value.length > 0) {
-      notifyTyping()
-      return
-    }
-
-    stopTyping()
-  }
-
-  function handleSendMessage() {
-    stopTyping()
-    socket.emit(
-      "message:send",
-      { conversationId, content: message },
-      (response: { success: boolean; messageId?: string; error?: string }) => {
-        if (!response.success) {
-          console.error(response.error)
-          return
-        }
-        setMessage("")
-      }
-    )
-  }
-
   return (
-    <div className="flex min-h-svh w-full items-center justify-center">
-      <div>
-        <Input
-          type="text"
-          value={message}
-          onChange={handleChange}
-          onBlur={stopTyping}
-        />
-
-        <ChatTypingIndicator
-          userIds={typingUserIds}
-          getUserName={() => "Alguém"}
-        />
-        <Button onClick={handleSendMessage}> Send message</Button>
-      </div>
-      <Button variant={"ghost"}> send message</Button>
-
-      {/* <ChatDemo /> */}
-      {/* <ChatDemo /> */}
-    </div>
+    <main className="grid h-svh grid-rows-2 divide-y md:grid-cols-2 md:grid-rows-1 md:divide-x md:divide-y-0">
+      {DEV_USERS.map((user) => (
+        <ChatSessionProvider key={user.id} user={user}>
+          <ChatPanel conversationId={DEMO_CONVERSATION_ID} />
+        </ChatSessionProvider>
+      ))}
+    </main>
   )
 }

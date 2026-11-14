@@ -1,49 +1,44 @@
-import { Server as HttpServer } from "node:http";
-import { Server } from "socket.io";
+import type { Server as HttpServer } from "node:http"
+import { Server } from "socket.io"
 
-import type {
-  InterServerEvents,
-  SocketData,
-} from "@/modules/chat/types";
+import { env } from "@/config/env"
+import type { Container } from "@/container"
+import { ChatGateway } from "@/modules/chat/chat-gateway"
+import { createSocketAuthMiddleware } from "@/socket/socket-middleware"
+import type { ChatServer } from "@/socket/types"
 
-import { env } from "@/config/env";
-import { ChatGateway } from "@/modules/chat/chat-gateway";
-import { socketAuthMiddleware } from "@/socket/socket-middleware";
-import type { ClientToServerEvents, ServerToClientEvents } from "@workspace/contracts";
-
-export let io: Server<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->;
-
-export function initializeSocket(httpServer: HttpServer) {
-  io = new Server(httpServer, {
+export function createSocketServer(
+  httpServer: HttpServer,
+  container: Container
+): ChatServer {
+  const io: ChatServer = new Server(httpServer, {
     cors: {
       origin: env.UI_URL,
       credentials: true,
     },
-  });
+  })
 
-  io.use(socketAuthMiddleware);
-  
-  io.on("connection", (socket) =>{
-    console.log("Socket server is runnnig! ")
-    console.log(`User connected: ${socket.data.userId}`);
+  io.use(createSocketAuthMiddleware(container.authService))
 
-    const gateway = new ChatGateway(io, socket);
+  const chatGateway = new ChatGateway(
+    io,
+    container.conversationService,
+    container.messageService
+  )
 
-    gateway.registerListeners();
+  io.on("connection", (socket) => {
+    console.log(`[socket] conectado: ${socket.data.userId} (${socket.id})`)
+
+    chatGateway.register(socket)
 
     socket.on("disconnect", (reason) => {
-      console.log(`User disconnected: ${reason}`);
-    });
-  });
+      console.log(`[socket] desconectado: ${socket.data.userId} (${reason})`)
+    })
+  })
 
   io.engine.on("connection_error", (err) => {
-    console.error("Socket connection error:", err.code, err.message, err.context);
-  });
+    console.error("[socket] erro de conexão:", err.code, err.message)
+  })
 
-  return io;
+  return io
 }

@@ -1,38 +1,16 @@
-import type { ClientToServerEvents, ServerToClientEvents } from "@workspace/contracts";
-import { Socket } from "socket.io";
-import type { InterServerEvents, SocketData } from "../modules/chat/types";
+import type { AuthService } from "@/modules/auth/auth-service"
+import type { ChatSocket } from "@/socket/types"
 
-type ChatSocket = Socket<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->;
+export function createSocketAuthMiddleware(authService: AuthService) {
+  return (socket: ChatSocket, next: (err?: Error) => void) => {
+    const token: unknown = socket.handshake.auth.token
+    const user = authService.verifyToken(
+      typeof token === "string" ? token : null
+    )
 
-export function socketAuthMiddleware(
-  socket: ChatSocket,
-  next: (err?: Error) => void,
-) {
-  const token = socket.handshake.auth.token;
+    if (!user) return next(new Error("Unauthorized"))
 
-  if (!token) {
-    return next(new Error("Unauthorized"));
-  }
-
-  try {
-    // const payload = jwt.verify(
-    //   token,
-    //   process.env.JWT_SECRET!,
-    // ) as jwt.JwtPayload;
-
-    if (token !== "authTokenExample") {
-      return next(new Error("Invalid token"));
-    }
-
-    socket.data.userId = "example_user";
-
-    next();
-  } catch {
-    next(new Error("Invalid token"));
+    socket.data.userId = user.userId
+    next()
   }
 }
