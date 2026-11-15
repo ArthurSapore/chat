@@ -125,6 +125,13 @@ Regras:
   atualize os imports — nunca duplique.
 - Uma feature/módulo não importa o `utils/` de outra; se precisar, promova para o `utils/` do app.
 - `packages/utils` não depende de DOM nem de Node (`lib: ["ES2022"]`, `types: []`), para rodar nos dois lados.
+- **Datas sempre com `date-fns`**, e o `date-fns` só é dependência do `packages/utils`: formatação,
+  comparação e datas relativas ("Hoje", "Ontem", "14 de novembro") ficam em `date-utils.ts`
+  (`formatTime`, `formatDateTime`, `isSameCalendarDay`, `formatFuzzyDay`…), com `locale: ptBR`
+  quando o texto vai para a UI. Apps importam de `@workspace/utils`, nunca o `date-fns` direto, e
+  não usam `toLocale*String`/`Intl.DateTimeFormat` para isso.
+- Testes com Vitest (`date-utils.test.ts`), usando datas locais (`new Date(y, m, d, h)`) para não
+  depender do fuso da máquina.
 
 ### `packages/utils`
 
@@ -138,14 +145,22 @@ Regras:
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
   },
-  "scripts": { "lint": "eslint", "typecheck": "tsc --noEmit" }
+  "scripts": { "lint": "eslint", "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": { "date-fns": "^4" }
 }
 ```
 
 ```ts
 // packages/utils/src/date-utils.ts
-export function toISODate(date: Date): string {
-  return date.toISOString().slice(0, 10)
+import { format, isSameDay, isSameYear, subDays } from "date-fns"
+import { ptBR } from "date-fns/locale"
+
+export function formatFuzzyDay(date: Date, now: Date = new Date()): string {
+  if (isSameDay(date, now)) return "Hoje"
+  if (isSameDay(date, subDays(now, 1))) return "Ontem"
+  return isSameYear(date, now)
+    ? format(date, "d de MMMM", { locale: ptBR })
+    : format(date, "d de MMMM de yyyy", { locale: ptBR })
 }
 ```
 

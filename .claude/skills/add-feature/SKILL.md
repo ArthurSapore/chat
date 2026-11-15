@@ -70,7 +70,8 @@ Resumo das regras da skill base que mais se aplicam a uma feature nova:
   `schemas.ts`, `types.ts`. Keys do Query em `constants.ts`.
 - **Estado**: servidor no TanStack Query; formulário no React Hook Form; navegação/filtros no
   TanStack Router (`validateSearch`); subárvore em Context; global de cliente em Zustand.
-- **Componentes**: primitivos novos em `packages/ui` (via shadcn/MCP quando existir), compostos da
+- **Componentes**: antes de criar, procure no shadcn (MCP `shadcn`); se existir, instale com o CLI
+  em vez de criar do zero. Primitivos novos em `packages/ui`, compostos da
   aplicação em `apps/web/src/components`, específicos em `feature/<feature>/components`.
 - **Utilitários** no menor escopo (feature/módulo → app → `packages/utils`).
 - **Testes Vitest** junto com o código, nunca outro runner.

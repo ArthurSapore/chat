@@ -15,6 +15,7 @@
     "@tabler/icons-react": "^3.51.0",
     "@workspace/contracts": "workspace:*",
     "@workspace/ui": "workspace:*",
+    "@workspace/utils": "workspace:*",
     "axios": "^1.21.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

@@ -21,7 +21,7 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 
 import { useChatSessionContext } from "@/features/chat/context/chat-session-context"
-import { formatDateTime } from "@/features/chat/lib/format"
+import { formatDateTime } from "@workspace/utils"
 import { getMessageInfoRequest } from "@/features/chat/service/requests"
 
 type InfoState =

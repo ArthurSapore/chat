@@ -15,7 +15,7 @@ import { MessageReactions } from "@/features/chat/components/message-reactions"
 import { MessageStatusIcon } from "@/features/chat/components/message-status-icon"
 import { ReplyQuote } from "@/features/chat/components/reply-quote"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
-import { formatTime } from "@/features/chat/lib/format"
+import { formatTime } from "@workspace/utils"
 import type {
   ConversationMessage,
   DeliveryStatus,

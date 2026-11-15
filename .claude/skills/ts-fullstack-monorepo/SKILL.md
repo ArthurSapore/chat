@@ -18,6 +18,7 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
 | Banco | PostgreSQL. ORM/query builder: use o que o projeto já tiver; se não houver, **pergunte ao usuário** antes de criar a persistência |
 | Web (`apps/web`) | React 19, Vite 8, **TanStack Router** (rotas por arquivo), **TanStack Query** (estado de servidor), **Zustand** (estado de cliente), **React Hook Form** + **Zod** (`@hookform/resolvers`), **axios** (requisições HTTP), Tailwind v4, `@tabler/icons-react`, `socket.io-client` quando houver tempo real |
 | UI (`packages/ui`) | shadcn (`style: base-maia`, `iconLibrary: tabler`, `rtl: true`), `@base-ui/react`, `class-variance-authority`, `cn`, `tw-animate-css`, fontes `@fontsource-variable/*` |
+| Utils (`packages/utils`) | Funções puras compartilhadas (`<assunto>-utils.ts`); datas sempre com **date-fns** (+ `date-fns/locale`) em `date-utils.ts` |
 | Contratos (`packages/contracts`) | DTOs, tipos HTTP, mapas de eventos e schemas Zod compartilhados, consumidos como fonte `.ts` |
 | Infra | **Dockerfile por app** + **docker-compose.yml** na raiz (postgres, api, web) |
 | Qualidade | ESLint 10 (flat) + typescript-eslint + react-hooks + react-refresh; Prettier 3 + `prettier-plugin-tailwindcss` |
@@ -139,6 +140,11 @@ compartilhados. Esta skill descreve **ferramentas e estrutura**, independentemen
       empty states — combinam primitivos e são usados por várias telas) → `apps/web/src/components`.
     - **De feature** (login-form, tabelas de uma entidade) → `apps/web/src/feature/<feature>/components`.
     Estilo só por tokens oklch do `globals.css` e propriedades lógicas (RTL).
+    **shadcn primeiro**: antes de criar qualquer componente que ainda não existe no projeto,
+    verifique se ele existe no shadcn/ui (MCP `shadcn`: `search_items_in_registries` com
+    `registries: ["@shadcn"]`). Se existir, **instale** (`pnpm dlx shadcn@latest add <nome> -c apps/web`)
+    e use/componha em vez de criar do zero. Quando o usuário citar um componente pelo nome
+    (Badge, Marker, Popover, Dialog…), entenda como o componente do shadcn com esse nome.
 14. **Prettier**: sem `;`, aspas duplas, 2 espaços, trailing comma `es5`, 80 colunas, LF.
 15. **Nomes**: arquivos kebab-case (sufixos `.controller.ts`, `.service.ts`, `.repository.ts`,
     `.routes.ts` na API); componentes/classes PascalCase; constantes `UPPER_SNAKE_CASE`.
@@ -193,6 +199,7 @@ docker compose up --build                  # stack completa
 - [ ] Estilo: classes na api; `function` (sem arrow sempre que possível) no web.
 - [ ] ORM: usado o já existente ou o escolhido pelo usuário (nunca escolhido sem perguntar).
 - [ ] Dados do servidor via TanStack Query (keys em `constants.ts`), formulários com RHF + Zod.
+- [ ] Componente novo: conferido no registro do shadcn antes; se existia, foi instalado (não recriado).
 - [ ] Contextos em `context/<nome>-context.tsx` (geral em `src/context`, de feature em `feature/<feature>/context`), com contexto, Provider e hook `use<Nome>Context` (que lança erro fora do provider) **no mesmo arquivo** — nunca um `-provider.tsx` separado.
 - [ ] Testes com **Vitest** (`*.test.ts(x)` ao lado do arquivo) para services, utilitários, schemas e componentes novos.
 - [ ] Funções, variáveis e textos de `describe`/`it` em inglês.

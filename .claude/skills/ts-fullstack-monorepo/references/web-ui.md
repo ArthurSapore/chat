@@ -817,11 +817,27 @@ Usado no layout de rota: `function AuthenticatedLayout() { return <AppLayout><Ou
 
 O `components.json` do pacote usa os mesmos valores com aliases `@workspace/ui/*` e `css: src/styles/globals.css`.
 
-Adicionar componente (prefira o MCP `shadcn` para buscar/visualizar antes):
+### shadcn primeiro
 
-```bash
-pnpm dlx shadcn@latest add <componente> -c apps/web
-```
+Antes de criar um componente que o projeto ainda não tem, **sempre** procure no shadcn/ui:
+
+1. Buscar: MCP `shadcn` → `search_items_in_registries` com `query: "<nome>"` e
+   `registries: ["@shadcn"]` (sem registries configurados no `components.json`, passe-o
+   explicitamente). Para ver código/variantes: `view_items_in_registries` /
+   `get_item_examples_from_registries`.
+2. Se existir: instalar com o CLI — nunca recriar à mão nem copiar de outro projeto:
+
+   ```bash
+   pnpm dlx shadcn@latest add <componente> -c apps/web
+   ```
+
+   O arquivo vai para `packages/ui/src/components/<componente>.tsx` (estilo `base-maia`).
+3. Usar pelas variantes/props do componente; ajustes visuais via `className`. Componha
+   primitivos do shadcn em componentes do app/feature em vez de reescrevê-los.
+4. Só se não existir no shadcn: criar o primitivo em `packages/ui` seguindo a anatomia abaixo.
+
+Quando o usuário pedir um componente pelo nome ("um Badge", "o Marker com variant separator"),
+ele se refere ao componente do shadcn: instale-o e use a variante pedida.
 
 `src/lib/utils.ts`: `export { cn } from "cn"`.
 
