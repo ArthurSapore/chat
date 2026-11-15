@@ -62,6 +62,7 @@ describe("MessageService", () => {
         content: "Oi",
         replyTo: null,
         clientId: null,
+        forwardedFrom: null,
       })
       expect(result).toBe(created)
     })
@@ -189,6 +190,30 @@ describe("MessageService", () => {
       ).rejects.toMatchObject({
         code: "FORBIDDEN",
         message: expect.stringContaining("15 minutos"),
+      })
+      expect(messages.update).not.toHaveBeenCalled()
+    })
+
+    it("throws FORBIDDEN when the message was forwarded", async () => {
+      vi.useFakeTimers({ now: sentAt })
+      const { sut, messages } = makeSut()
+      messages.findById.mockResolvedValue(
+        makeMessage({
+          senderId: "user-a",
+          createdAt,
+          forwardedFrom: {
+            messageId: "orig",
+            conversationId: "conv-2",
+            senderId: "user-b",
+          },
+        })
+      )
+
+      await expect(
+        sut.edit("user-a", { messageId: "msg-1", content: "Editada" })
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "Mensagens encaminhadas não podem ser editadas",
       })
       expect(messages.update).not.toHaveBeenCalled()
     })

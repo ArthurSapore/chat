@@ -1,6 +1,7 @@
 import type { ChatMessage, MemberReceipt } from "@workspace/contracts"
 
 import type { Conversation } from "@/modules/conversations/conversation-repository"
+import type { ReceiptHistoryEntry } from "@/modules/receipts/receipt-repository"
 
 /** Dados de desenvolvimento enquanto não há banco. */
 export const DEMO_CONVERSATION_ID = "conversation-123"
@@ -28,6 +29,7 @@ export const seedMessages: ChatMessage[] = Array.from(
     replyTo: null,
     reactions: [],
     clientId: null,
+    forwardedFrom: null,
   })
 )
 
@@ -40,3 +42,11 @@ export const seedReceipts: MemberReceipt[] = DEMO_USER_IDS.map((userId) => ({
   deliveredAt: lastSeedAt,
   readAt: lastSeedAt,
 }))
+
+/** Quando o histórico de exemplo foi entregue e lido (um minuto após a última). */
+export const seedReceiptHistory: ReceiptHistoryEntry[] = seedReceipts.map(
+  (receipt) => ({
+    ...receipt,
+    changedAt: new Date(new Date(lastSeedAt).getTime() + 60_000).toISOString(),
+  })
+)

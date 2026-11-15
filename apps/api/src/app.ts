@@ -7,6 +7,7 @@ import type { Container } from "@/container"
 import { requireAuth } from "@/http/middlewares/auth"
 import { errorHandler, notFoundHandler } from "@/http/middlewares/error-handler"
 import { createMessageRoutes } from "@/modules/messages/message-routes"
+import { createReceiptRoutes } from "@/modules/receipts/receipt-routes"
 
 export function createApp(container: Container): Express {
   const app = express()
@@ -22,6 +23,7 @@ export function createApp(container: Container): Express {
   // Rotas autenticadas
   app.use(requireAuth(container.authService))
   app.use(createMessageRoutes(container.messageService))
+  app.use(createReceiptRoutes(container.receiptService))
 
   // Express 5 já encaminha erros de handlers async para cá.
   app.use(notFoundHandler)

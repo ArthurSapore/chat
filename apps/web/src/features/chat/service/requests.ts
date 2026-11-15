@@ -1,6 +1,8 @@
 import {
   MESSAGE_ROUTES,
+  type GetMessageInfoRequest,
   type ListConversationMessagesRequest,
+  type MessageInfo,
   type MessagePage,
 } from "@workspace/contracts"
 
@@ -18,6 +20,17 @@ export async function listConversationMessagesRequest(
 ) {
   return http.request<MessagePage>({
     ...MESSAGE_ROUTES.listConversationMessages(dto),
+    headers: authHeaders(token),
+    signal,
+  })
+}
+
+export async function getMessageInfoRequest(
+  dto: GetMessageInfoRequest,
+  { token, signal }: SessionRequestOptions
+) {
+  return http.request<MessageInfo>({
+    ...MESSAGE_ROUTES.getMessageInfo(dto),
     headers: authHeaders(token),
     signal,
   })

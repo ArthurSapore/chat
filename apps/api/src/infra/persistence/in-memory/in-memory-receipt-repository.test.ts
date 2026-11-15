@@ -23,6 +23,20 @@ describe("InMemoryReceiptRepository", () => {
     await expect(sut.listByConversation("conv-1")).resolves.toEqual([next])
   })
 
+  it("appends and lists the history per conversation and user, in order", async () => {
+    const first = { ...makeReceipt(), changedAt: "2026-01-01T10:00:00.000Z" }
+    const second = { ...makeReceipt(), changedAt: "2026-01-01T10:01:00.000Z" }
+    const sut = new InMemoryReceiptRepository([], [first])
+
+    await sut.appendHistory(second)
+    await sut.appendHistory({ ...second, userId: "user-a" })
+
+    await expect(sut.listHistory("conv-1", "user-b")).resolves.toEqual([
+      first,
+      second,
+    ])
+  })
+
   it("lists only the receipts of the requested conversation", async () => {
     const sut = new InMemoryReceiptRepository([
       makeReceipt({ conversationId: "conv-1" }),

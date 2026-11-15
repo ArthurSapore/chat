@@ -43,15 +43,23 @@ export class MessageService {
       content: input.content,
       replyTo,
       clientId: input.clientId ?? null,
+      // Encaminhar ainda não existe: só o modelo e a regra de edição estão prontos.
+      forwardedFrom: null,
     })
   }
 
-  /** Só o autor edita, e só dentro do prazo (MESSAGE_EDIT_WINDOW_MS). */
+  /**
+   * Só o autor edita, só dentro do prazo (MESSAGE_EDIT_WINDOW_MS) e nunca uma
+   * mensagem encaminhada.
+   */
   async edit(userId: string, input: EditMessageInput): Promise<ChatMessage> {
     const message = await this.findAccessible(userId, input.messageId)
 
     if (message.senderId !== userId) {
       throw AppError.forbidden("Só o autor pode editar a mensagem")
+    }
+    if (message.forwardedFrom) {
+      throw AppError.forbidden("Mensagens encaminhadas não podem ser editadas")
     }
     if (!isWithinEditWindow(message.createdAt)) {
       throw AppError.forbidden(

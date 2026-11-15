@@ -41,6 +41,17 @@ export const replyPreviewSchema = z.object({
 })
 export type ReplyPreview = z.infer<typeof replyPreviewSchema>
 
+/**
+ * Origem de uma mensagem encaminhada. Mensagens encaminhadas não podem ser
+ * editadas (o conteúdo é de outra pessoa/conversa).
+ */
+export const forwardedFromSchema = z.object({
+  messageId: idSchema,
+  conversationId: idSchema,
+  senderId: idSchema,
+})
+export type ForwardedFrom = z.infer<typeof forwardedFromSchema>
+
 export const chatMessageSchema = z.object({
   id: idSchema,
   conversationId: idSchema,
@@ -56,6 +67,8 @@ export const chatMessageSchema = z.object({
    * confirmada e torna o reenvio idempotente.
    */
   clientId: z.string().nullable(),
+  /** Preenchido quando a mensagem foi encaminhada de outra. */
+  forwardedFrom: forwardedFromSchema.nullable(),
 })
 export type ChatMessage = z.infer<typeof chatMessageSchema>
 
@@ -82,6 +95,19 @@ export interface ConversationJoined {
 /** Se o prazo de edição ainda está aberto em `now`. */
 export function isWithinEditWindow(createdAt: string, now = Date.now()) {
   return now - new Date(createdAt).getTime() <= MESSAGE_EDIT_WINDOW_MS
+}
+
+/**
+ * Regras de edição que dependem só da mensagem (a autoria é checada à parte):
+ * não pode ser encaminhada e precisa estar dentro do prazo.
+ */
+export function canEditMessage(
+  message: Pick<ChatMessage, "createdAt" | "forwardedFrom">,
+  now = Date.now()
+) {
+  return (
+    message.forwardedFrom === null && isWithinEditWindow(message.createdAt, now)
+  )
 }
 
 /* ------------------------------ socket: entrada ---------------------------- */
@@ -168,6 +194,28 @@ export interface MessagesQueryParams {
 /** DTO de `MESSAGE_ROUTES.listConversationMessages`. */
 export interface ListConversationMessagesRequest extends MessagesQueryParams {
   conversationId: string
+}
+
+/* ------------------------- REST: info da mensagem ------------------------- */
+
+/** DTO de `MESSAGE_ROUTES.getMessageInfo`. */
+export interface GetMessageInfoRequest {
+  conversationId: string
+  messageId: string
+}
+
+/** Quando a mensagem chegou e foi lida por um destinatário (null = ainda não). */
+export interface MessageRecipientInfo {
+  userId: string
+  deliveredAt: string | null
+  readAt: string | null
+}
+
+/** "Info" de uma mensagem: só o autor pode consultar. */
+export interface MessageInfo {
+  messageId: string
+  sentAt: string
+  recipients: MessageRecipientInfo[]
 }
 
 export const messagePageSchema = z.object({

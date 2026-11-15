@@ -14,6 +14,7 @@ export function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     replyTo: null,
     reactions: [],
     clientId: null,
+    forwardedFrom: null,
     ...overrides,
   }
 }

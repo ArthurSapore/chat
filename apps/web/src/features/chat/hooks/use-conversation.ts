@@ -444,6 +444,7 @@ export function useConversation(conversationId: string) {
             }
           : null,
         reactions: [],
+        forwardedFrom: null,
         localStatus: "sending",
       }
 

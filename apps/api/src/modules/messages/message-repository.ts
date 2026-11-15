@@ -3,6 +3,7 @@ import type {
   MessagePage,
   MessageReaction,
   MessagesQuery,
+  ForwardedFrom,
   ReplyPreview,
 } from "@workspace/contracts"
 
@@ -12,6 +13,7 @@ export interface CreateMessageData {
   content: string
   replyTo: ReplyPreview | null
   clientId: string | null
+  forwardedFrom: ForwardedFrom | null
 }
 
 /** Campos que podem mudar depois do envio. */

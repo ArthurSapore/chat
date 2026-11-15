@@ -4,6 +4,7 @@ import { InMemoryReceiptRepository } from "@/infra/persistence/in-memory/in-memo
 import {
   seedConversations,
   seedMessages,
+  seedReceiptHistory,
   seedReceipts,
 } from "@/infra/persistence/in-memory/seed"
 import { AuthService } from "@/modules/auth/auth-service"
@@ -20,7 +21,10 @@ export function createContainer() {
     seedConversations
   )
   const messageRepository = new InMemoryMessageRepository(seedMessages)
-  const receiptRepository = new InMemoryReceiptRepository(seedReceipts)
+  const receiptRepository = new InMemoryReceiptRepository(
+    seedReceipts,
+    seedReceiptHistory
+  )
 
   const authService = new AuthService()
   const conversationService = new ConversationService(conversationRepository)

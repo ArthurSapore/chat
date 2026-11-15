@@ -7,7 +7,17 @@ const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 })
 
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+})
+
 /** "14:05" a partir de uma data ISO. */
 export function formatTime(iso: string) {
   return timeFormatter.format(new Date(iso))
+}
+
+/** "14/11/2026, 14:05" a partir de uma data ISO. */
+export function formatDateTime(iso: string) {
+  return dateTimeFormatter.format(new Date(iso))
 }

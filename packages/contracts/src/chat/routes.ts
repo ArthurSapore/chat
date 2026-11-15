@@ -1,5 +1,8 @@
 import { buildPath, type HttpRequestConfig } from "../routes"
-import type { ListConversationMessagesRequest } from "./schemas"
+import type {
+  GetMessageInfoRequest,
+  ListConversationMessagesRequest,
+} from "./schemas"
 
 /**
  * Padrões de caminho (formato do Express). A API registra as rotas com eles;
@@ -7,6 +10,7 @@ import type { ListConversationMessagesRequest } from "./schemas"
  */
 export const MESSAGE_PATHS = {
   conversationMessages: "/conversations/:conversationId/messages",
+  messageInfo: "/conversations/:conversationId/messages/:messageId/info",
 } as const
 
 /**
@@ -22,6 +26,16 @@ export const MESSAGE_ROUTES = {
       method: "GET",
       url: buildPath(MESSAGE_PATHS.conversationMessages, { conversationId }),
       params,
+    }
+  },
+
+  getMessageInfo({
+    conversationId,
+    messageId,
+  }: GetMessageInfoRequest): HttpRequestConfig {
+    return {
+      method: "GET",
+      url: buildPath(MESSAGE_PATHS.messageInfo, { conversationId, messageId }),
     }
   },
 } as const

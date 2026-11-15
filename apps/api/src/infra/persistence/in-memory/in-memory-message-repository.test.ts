@@ -92,6 +92,7 @@ describe("InMemoryMessageRepository", () => {
         content: "Nova",
         replyTo: null,
         clientId: "client-1",
+        forwardedFrom: null,
       })
 
       expect(created).toMatchObject({
@@ -100,6 +101,7 @@ describe("InMemoryMessageRepository", () => {
         editedAt: null,
         reactions: [],
         clientId: "client-1",
+        forwardedFrom: null,
       })
       expect(ids(await sut.findPage("conv-1", { limit: 1 }))).toEqual([
         created.id,
@@ -123,6 +125,7 @@ describe("InMemoryMessageRepository", () => {
         content: "Oi",
         replyTo: null,
         clientId: "client-1",
+        forwardedFrom: null,
       })
 
       await expect(

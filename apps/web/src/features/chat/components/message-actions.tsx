@@ -9,6 +9,7 @@ import { useEffect, useState, type ComponentType } from "react"
 
 import { cn } from "@workspace/ui/lib/utils"
 
+import { MessageInfoPopover } from "@/features/chat/components/message-info-popover"
 import { ReactionPicker } from "@/features/chat/components/reaction-picker"
 import { useEditWindow } from "@/features/chat/hooks/use-edit-window"
 import { myReaction } from "@/features/chat/lib/reactions"
@@ -23,24 +24,31 @@ interface MessageActionsProps extends MessageActionHandlers {
   message: ChatMessage
   currentUserId: string
   isOwn: boolean
+  getUserName: (userId: string) => string
 }
 
 /**
- * Menu de ações embaixo da mensagem: Responder, Copiar, Reagir e Editar
- * (este só para o autor, nos 15 minutos após o envio). Fica oculto até o
- * hover/foco; em telas touch fica sempre visível.
+ * Menu de ações embaixo da mensagem: Responder, Copiar, Reagir e, só para o
+ * autor, Info e Editar (nos 15 minutos após o envio e nunca em mensagens
+ * encaminhadas). Fica oculto até o hover/foco; em telas touch fica sempre
+ * visível.
  */
 export function MessageActions({
   message,
   currentUserId,
   isOwn,
+  getUserName,
   onReply,
   onEdit,
   onToggleReaction,
 }: MessageActionsProps) {
   const [copied, setCopied] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
-  const canEdit = useEditWindow(message.createdAt, isOwn)
+  const [isInfoOpen, setIsInfoOpen] = useState(false)
+  const canEdit = useEditWindow(
+    message.createdAt,
+    isOwn && message.forwardedFrom === null
+  )
 
   useEffect(() => {
     if (!copied) return
@@ -62,7 +70,7 @@ export function MessageActions({
       data-slot="message-actions"
       className={cn(
         "flex items-center gap-1 opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100",
-        isPickerOpen && "opacity-100"
+        (isPickerOpen || isInfoOpen) && "opacity-100"
       )}
     >
       <ActionButton
@@ -82,6 +90,15 @@ export function MessageActions({
         align={isOwn ? "end" : "start"}
         triggerClassName={actionButtonClass}
       />
+      {isOwn && (
+        <MessageInfoPopover
+          message={message}
+          getUserName={getUserName}
+          align="end"
+          onOpenChange={setIsInfoOpen}
+          triggerClassName={actionButtonClass}
+        />
+      )}
       {canEdit && (
         <ActionButton
           label="Editar (até 15 min após o envio)"

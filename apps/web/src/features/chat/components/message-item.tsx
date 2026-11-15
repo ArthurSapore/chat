@@ -1,3 +1,4 @@
+import { IconArrowForwardUp } from "@tabler/icons-react"
 import { memo } from "react"
 
 import { Bubble, BubbleContent } from "@workspace/ui/components/bubble"
@@ -74,6 +75,16 @@ export const MessageItem = memo(function MessageItem({
           <MessageHeader>{authorName}</MessageHeader>
         )}
 
+        {message.forwardedFrom && (
+          <span
+            data-slot="message-forwarded"
+            className="flex items-center gap-1 px-1 text-xs text-muted-foreground italic"
+          >
+            <IconArrowForwardUp className="size-3.5" aria-hidden />
+            Encaminhada
+          </span>
+        )}
+
         {message.replyTo && (
           <ReplyQuote
             replyTo={message.replyTo}
@@ -108,6 +119,7 @@ export const MessageItem = memo(function MessageItem({
               message={message}
               currentUserId={currentUserId}
               isOwn={isOwn}
+              getUserName={getUserName}
               onReply={onReply}
               onEdit={onEdit}
               onToggleReaction={onToggleReaction}

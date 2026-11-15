@@ -36,6 +36,7 @@ export class InMemoryMessageRepository implements MessageRepository {
       replyTo: data.replyTo,
       reactions: [],
       clientId: data.clientId,
+      forwardedFrom: data.forwardedFrom,
     }
     this.insert(message)
     return message
